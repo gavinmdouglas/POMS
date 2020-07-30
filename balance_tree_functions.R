@@ -8,6 +8,215 @@ library(phangorn)
 library(stringr)
 library(VennDiagram)
 
+two_group_balance_tree_pipeline <- function(abun,
+                                            func,
+                                            phylogeny,
+                                            taxa,
+                                            group1_samples,
+                                            group2_samples,
+                                            ncores=1,
+                                            pseudocount=1,
+                                            significant_nodes=NULL,
+                                            tested_balances=NULL,
+                                            min_num_tips=10,
+                                            min_func_instances=10,
+                                            min_func_prop=0.001,
+                                            name_threshold=0.9,
+                                            balance_p_cutoff = 0.05,
+                                            balance_correction = "BY",
+                                            function_p_cutoff = 0.05,
+                                            function_correction = "none",
+                                            pathway2func_map = "/home/gavin/projects/POMS/KEGG_mappings/prepped/KO_pathways_22Aug2019.tsv",
+                                            pathway_descrip_infile = "/home/gavin/projects/POMS/KEGG_mappings/prepped/path_descrip_22Aug2019.tsv",
+                                            func_descrip_infile = "/home/gavin/projects/POMS/KEGG_mappings/prepped/KO_descrip_22Aug2019.tsv",
+                                            verbose=FALSE) {
+  
+  if(verbose) { message("Checking input arguments.") }
+  input_param <- check_two_group_balance_args(abun=abun, func=func, phylogeny=phylogeny, taxa=taxa,
+                                              group1_samples=group1_samples, group2_samples=group2_samples,
+                                              ncores=ncores, pseudocount=pseudocount, significant_nodes=significant_nodes,
+                                              tested_balances=tested_balances, min_num_tips=min_num_tips, min_func_instances=min_func_instances,
+                                              min_func_prop=min_func_prop, name_threshold=name_threshold,
+                                              balance_p_cutoff=balance_p_cutoff, balance_correction=balance_correction,
+                                              function_p_cutoff=function_p_cutoff, function_correction=function_correction,
+                                              pathway2func_map=pathway2func_map, pathway_descrip_infile=pathway_descrip_infile,
+                                              func_descrip_infile=func_descrip_infile, verbose=verbose)
+  
+  if(verbose) { message("Prepping input phylogeny.") }
+  phylogeny <- prep_tree(phy=phylogeny, tips2keep=rownames(abun))
+  
+  if((min_func_instances > 0) || (min_func_prop > 0)) {
+    func <- filter_rare_table_cols(func,  min_func_instances, min_func_prop, verbose)
+  }
+  
+  if(is.null(significant_nodes)) {
+    
+    if(verbose) { message("Calculating balances.") }
+    
+    calculated_balances <- compute_tree_node_balances(abun=abun, phylogeny=phylogeny, ncores=ncores, min_num_tips = min_num_tips)
+    
+    if(verbose) { message("Identified ", length(calculated_balances$balances), " of ", length(phylogeny$node.label), " nodes as non-negligible and will be used for analyses.") }
+    
+    if(verbose) { message("Running Wilcoxon tests to test for differences in balances between groups at each non-negligible node.") }
+    
+    pairwise_node_out <- pairwise_mean_direction_and_wilcoxon(calculated_balances$balances, group1_samples, group2_samples, corr_method=balance_correction, skip_wilcoxon=FALSE)
+    
+    sig_nodes <- names(calculated_balances$balances)[which(pairwise_node_out$wilcox_corrected_p < balance_p_cutoff)]
+    
+  } else {
+    
+    sig_nodes <- significant_nodes
+    
+    calculated_balances <- list()
+    calculated_balances$balances <- tested_balances
+    calculated_balances$features <- parallel::mclapply(names(tested_balances),
+                                                       lhs_rhs_asvs,
+                                                       tree=phylogeny,
+                                                       get_node_index=TRUE,
+                                                       mc.cores=ncores)
+    
+    names(calculated_balances$features) <- names(tested_balances)
+    
+    negligible_nodes_i <- which(! names(phylogeny$node.label) %in% names(tested_balances))
+    if(length(negligible_nodes_i) > 0) {
+      calculated_balances$negligible_nodes <- phylogeny$node.label[negligible_nodes_i]
+    } else {
+      calculated_balances$negligible_nodes <- c()
+    }
+    
+    pairwise_node_out <- pairwise_mean_direction_and_wilcoxon(calculated_balances$balances, group1_samples, group2_samples, skip_wilcoxon=TRUE)
+  }
+  
+  if(verbose) { message("Identifying enriched functions at all non-negligible nodes.") }
+  
+  all_balances_enriched_funcs <- mclapply(names(calculated_balances$balances),
+                                          function(x) {
+                                            return(node_func_fisher(node = x,
+                                                                    in_tree = phylogeny,
+                                                                    in_func = func,
+                                                                    higher_group=pairwise_node_out$mean_direction[x],
+                                                                    pseudocount=1,
+                                                                    multiple_test_corr=function_correction))
+                                          },
+                                          mc.cores = ncores)
+  
+  names(all_balances_enriched_funcs) <- names(calculated_balances$balances)
+  
+  if(verbose) { message("Summarizing significant functions across nodes.") }
+  
+  func_summaries <- summarize_node_enrichment(all_balances_enriched_funcs, sig_nodes, function_p_cutoff)
+  
+  # Get single DF summarizing the key metrics and print this out.
+  func_descrip <- read.table(func_descrip_infile,
+                             header=FALSE, sep="\t", row.names=1, stringsAsFactors = FALSE, quote="")
+  
+  all_func_id <- c()
+  for(balance in names(all_balances_enriched_funcs)) {
+    all_func_id <- c(all_func_id, rownames(all_balances_enriched_funcs[[balance]]))
+  }
+  
+  all_func_id <- all_func_id[-which(duplicated(all_func_id))]
+  
+  if(verbose) { message("Creating results dataframe.") }
+  summary_df <- data.frame(matrix(NA, nrow=length(all_func_id), ncol=15))
+  
+  rownames(summary_df) <- all_func_id
+  
+  colnames(summary_df) <- c("func",
+                            "num_sig_nodes_nonenrich",
+                            "num_sig_nodes_pos_enrich",
+                            "num_sig_nodes_neg_enrich",
+                            "num_sig_nodes_not_present",
+                            "num_nonsig_nodes_nonenrich",
+                            "num_nonsig_nodes_enrich",
+                            "num_nonsig_nodes_not_present",
+                            "mean_internode_dist_present",
+                            "max_internode_dist_present",
+                            "mean_internode_dist_neg_enrich",
+                            "max_internode_dist_neg_enrich",
+                            "mean_internode_dist_pos_enrich",
+                            "max_internode_dist_pos_enrich",
+                            "description")
+  
+  rownames(summary_df) <- all_func_id                                  
+  summary_df$func <- all_func_id
+  summary_df$description <- func_descrip[summary_df$func, "V2"]
+  
+  phylogeny_node_dists <- dist.nodes(phylogeny)
+  
+  for(func_id in all_func_id) {
+    
+    summary_df[func_id, c("num_sig_nodes_nonenrich",
+                          "num_sig_nodes_pos_enrich",
+                          "num_sig_nodes_neg_enrich",
+                          "num_sig_nodes_not_present",
+                          "num_nonsig_nodes_nonenrich",
+                          "num_nonsig_nodes_enrich",
+                          "num_nonsig_nodes_not_present")] <- c(length(func_summaries[[func_id]]$nonenriched_sig_nodes),
+                                                                length(func_summaries[[func_id]]$positive_nodes),
+                                                                length(func_summaries[[func_id]]$negative_nodes),
+                                                                length(func_summaries[[func_id]]$missing_sig_nodes),
+                                                                length(func_summaries[[func_id]]$nonenriched_nonsig_nodes),
+                                                                length(func_summaries[[func_id]]$enriched_nonsig_nodes),
+                                                                length(func_summaries[[func_id]]$missing_nonsig_nodes))
+    
+    all_nodes_present <- c(func_summaries[[func_id]]$nonenriched_sig_nodes,
+                           func_summaries[[func_id]]$positive_nodes,
+                           func_summaries[[func_id]]$negative_nodes,
+                           func_summaries[[func_id]]$nonenriched_nonsig_nodes,
+                           func_summaries[[func_id]]$enriched_nonsig_nodes)
+    
+    if(max(table(all_nodes_present)) > 1) {
+      stop("Node categorized into at least 2 mutually exclusive groups.")
+    }
+    
+    summary_df[func_id, c("mean_internode_dist_present",
+                          "max_internode_dist_present",
+                          "mean_internode_dist_neg_enrich",
+                          "max_internode_dist_neg_enrich",
+                          "mean_internode_dist_pos_enrich",
+                          "max_internode_dist_pos_enrich")] <- c(internode_mean_max_dist(phy = phylogeny, dist_matrix = phylogeny_node_dists,
+                                                                                         node_labels = all_nodes_present),
+                                                                 internode_mean_max_dist(phy = phylogeny, dist_matrix = phylogeny_node_dists,
+                                                                                         node_labels = func_summaries[[func_id]]$negative_nodes),
+                                                                 internode_mean_max_dist(phy = phylogeny, dist_matrix = phylogeny_node_dists,
+                                                                                         node_labels = func_summaries[[func_id]]$positive_nodes))
+    
+  }
+  
+  # For each significant node, test for significantly enriched pathways as well.
+  overenriched_node_funcs <- c()
+  underenriched_node_funcs <- c()
+  
+  sig_nodes_enriched_funcs <- all_balances_enriched_funcs[sig_nodes]
+  
+  for(node in names(sig_nodes_enriched_funcs)) {
+    
+    node_sig_func_df <- sig_nodes_enriched_funcs[[node]]
+    
+    overenriched_node_funcs <- c(overenriched_node_funcs, rownames(node_sig_func_df)[which(node_sig_func_df$OR > 1 & node_sig_func_df$P_corr < function_p_cutoff)])
+    underenriched_node_funcs <- c(underenriched_node_funcs, rownames(node_sig_func_df)[which(node_sig_func_df$OR < 1 & node_sig_func_df$P_corr < function_p_cutoff)])
+  }
+  
+  enriched_node_funcs <- list(over=overenriched_node_funcs, under=underenriched_node_funcs)
+  
+  if(verbose) { message("Identifying enriched pathways.") }
+  sig_nodes_enriched_pathways <- identify_enriched_pathways(func=func, func_subsets_to_test=enriched_node_funcs,
+                                                            pathway2func_map=pathway2func_map, pathway_descrip_infile = pathway_descrip_infile)
+  
+  return(list(balances_info=calculated_balances,
+              sig_nodes=sig_nodes,
+              pathways=sig_nodes_enriched_pathways,
+              funcs_per_node=sig_nodes_enriched_funcs,
+              funcs=enriched_node_funcs,
+              df=summary_df,
+              out_list=func_summaries,
+              tree=phylogeny,
+              input_param=input_param))
+  
+}
+
+
 parse_taxa_to_df <- function(infile, asvs2keep) {
   
   # Taxonomy files created with commands like this: 
@@ -525,34 +734,67 @@ wilcoxon_2group_pvalues <- function(intable, group1_samples, group2_samples) {
   return(wilcoxon_p)
 }
 
-compute_tree_node_balances <- function(phylogeny, abun, ncores=1, pseudocount=1) {
+compute_tree_node_balances <- function(phylogeny, abun, min_num_tips, ncores=1, pseudocount=1, subset2test=NULL) {
   
   ### Function to perform isomatric log-ratio transformation of feature abundances at each node in the tree.
   ### Will return a list containing the features on the left-hand side (lhs) and right-hand side (rhs) of each
   ### node in a tree ("features") and also the computed balances ("balances").
   
+  # Test all nodes unless subset specified.  
+  if(! is.null(subset2test)) {
+    nodes2test <- subset2test
+  } else {
+    nodes2test <- phylogeny$node.label
+  }
+
   # Get ASVs on either side of each node.
-  balance_features <- parallel::mclapply(phylogeny$node.label,
+  node_features <- parallel::mclapply(nodes2test,
                                          lhs_rhs_asvs,
                                          tree=phylogeny,
                                          get_node_index=TRUE,
                                          mc.cores=ncores)
   
-  names(balance_features) <- phylogeny$node.label
+  names(node_features) <- nodes2test
+  
+  negligible_nodes <- sapply(names(node_features),
+                                function(x) {
+                                  lhs_feat_num <- length(node_features[[x]]$lhs)
+                                  rhs_feat_num <- length(node_features[[x]]$rhs)
+                                  if((lhs_feat_num < min_num_tips) || (rhs_feat_num < min_num_tips)) {
+                                    return(TRUE)
+                                  } else {
+                                    return(FALSE) 
+                                  }
+                                })
+  
+  negligible_nodes_i <- which(negligible_nodes)
+  if(length(negligible_nodes_i) > 0) {
+    negligible_nodes <- names(negligible_nodes[negligible_nodes_i])
+  } else {
+    negligible_nodes <- c()
+  }
+  
+  nonnegligible_nodes_i <- which(! names(node_features) %in% negligible_nodes)
+  
+  if(length(nonnegligible_nodes_i) > 0) {
+    nonnegligible_nodes <- names(node_features)[nonnegligible_nodes_i]
+  } else {
+    stop("Stopping - no non-negligible nodes remain after filtering based on mininum number of tips of left and right-hand side of each node.")
+  }
   
   # Calculate balances at each node.
-  balance_calc <- mclapply(names(balance_features),
+  balance_calc <- mclapply(nonnegligible_nodes,
                            function(x) {
                              return(calc_balances(abun_table=abun,
-                                                  lhs_features=balance_features[[x]]$lhs,
-                                                  rhs_features=balance_features[[x]]$rhs,
+                                                  lhs_features=node_features[[x]]$lhs,
+                                                  rhs_features=node_features[[x]]$rhs,
                                                   pseudocount=pseudocount))
                            },
                            mc.cores=ncores)
   
-  names(balance_calc) <- names(balance_features)
+  names(balance_calc) <- nonnegligible_nodes
   
-  return(list(features=balance_features, balances=balance_calc))
+  return(list(features=node_features, balances=balance_calc, negligible_nodes=negligible_nodes))
   
 }
 
@@ -586,66 +828,65 @@ feature_consensus_taxon <- function(taxa, features, threshold) {
   return("Unclear")
 }
 
-summarize_balance_enrichment <- function(enriched_funcs, sig_balances, func_p_cutoff) {
+summarize_node_enrichment <- function(enriched_funcs, sig_nodes, func_p_cutoff) {
   # For each function that is significant at least once get:
-  #   - Names of significant balances where the function is present.
-  #   - Names of positively and negatively enriched significant balances.
-  #   - Names of nonsignificant balances where the function would have been significant.
-  #   - Names of nonsignificant balances where the function was present.
+  #   - Names of significant nodes where the function is present.
+  #   - Names of positively and negatively enriched significant nodes
+  #   - Names of nonsignificant nodes where the function would have been significant.
+  #   - Names of nonsignificant nodes where the function was present.
   
   # First get all unique functions.
   all_func_id <- c()
-  for(balance in names(enriched_funcs)) {
-    all_func_id <- c(all_func_id, rownames(enriched_funcs[[balance]]))
+  for(node in names(enriched_funcs)) {
+    all_func_id <- c(all_func_id, rownames(enriched_funcs[[node]]))
   }
   
   all_func_id <- all_func_id[-which(duplicated(all_func_id))]
   
   func_summaries <- list()
-  func_summaries$balances <- list()
   
-  # Loop through each function and get breakdown of contributing balance names.
+  # Loop through each function and get breakdown of contributing node names.
   for(func_id in all_func_id) {
     
-    func_summaries$balances[[func_id]]$positive_balances <- c()
-    func_summaries$balances[[func_id]]$negative_balances <- c()
-    func_summaries$balances[[func_id]]$nonenriched_sig_balances <- c()
-    func_summaries$balances[[func_id]]$nonenriched_nonsig_balances <- c()
-    func_summaries$balances[[func_id]]$enriched_nonsig_balances <- c()
-    func_summaries$balances[[func_id]]$missing_sig_balances <- c()
-    func_summaries$balances[[func_id]]$missing_nonsig_balances <- c()
+    func_summaries[[func_id]]$positive_nodes <- c()
+    func_summaries[[func_id]]$negative_nodes <- c()
+    func_summaries[[func_id]]$nonenriched_sig_nodes <- c()
+    func_summaries[[func_id]]$nonenriched_nonsig_nodes <- c()
+    func_summaries[[func_id]]$enriched_nonsig_nodes <- c()
+    func_summaries[[func_id]]$missing_sig_nodes <- c()
+    func_summaries[[func_id]]$missing_nonsig_nodes <- c()
     
-    for(balance in names(enriched_funcs)) {
-      if(func_id %in% rownames(enriched_funcs[[balance]])) {
+    for(node in names(enriched_funcs)) {
+      if(func_id %in% rownames(enriched_funcs[[node]])) {
         
-        if(balance %in% sig_balances) {
-          # If this balance was significant then categorize it as either positive, negative, or nonenriched.
-          if(as.numeric(enriched_funcs[[balance]][func_id, "P_corr"]) < func_p_cutoff) {
+        if(node %in% sig_nodes) {
+          # If this node was significant then categorize it as either positive, negative, or nonenriched.
+          if(as.numeric(enriched_funcs[[node]][func_id, "P_corr"]) < func_p_cutoff) {
             
-            if(as.numeric(enriched_funcs[[balance]][func_id, "OR"]) > 1) {
-              func_summaries$balances[[func_id]]$positive_balances <- c(func_summaries$balances[[func_id]]$positive_balances, balance)
-            } else if(as.numeric(enriched_funcs[[balance]][func_id, "OR"]) < 1) {
-              func_summaries$balances[[func_id]]$negative_balances <- c(func_summaries$balances[[func_id]]$negative_balances, balance)
+            if(as.numeric(enriched_funcs[[node]][func_id, "OR"]) > 1) {
+              func_summaries[[func_id]]$positive_nodes <- c(func_summaries[[func_id]]$positive_nodes, node)
+            } else if(as.numeric(enriched_funcs[[node]][func_id, "OR"]) < 1) {
+              func_summaries[[func_id]]$negative_nodes <- c(func_summaries[[func_id]]$negative_nodes, node)
             } else {
-              print(enriched_funcs[[balance]][func_id, ])
+              print(enriched_funcs[[node]][func_id, ])
               stop("Significant function but OR for above info not different from 1?!")
             }
           } else {
-            func_summaries$balances[[func_id]]$nonenriched_sig_balances <- c(func_summaries$balances[[func_id]]$nonenriched_sig_balances, balance)
+            func_summaries[[func_id]]$nonenriched_sig_nodes <- c(func_summaries[[func_id]]$nonenriched_sig_nodes, node)
           }
         } else {
-          # Since this balance was NOT significant then categorize it as either enriched or nonenriched.
-          if(as.numeric(enriched_funcs[[balance]][func_id, "P_corr"]) < func_p_cutoff) {
-            func_summaries$balances[[func_id]]$enriched_nonsig_balances <- c(func_summaries$balances[[func_id]]$enriched_nonsig_balances, balance)
+          # Since this node was NOT significant then categorize it as either enriched or nonenriched.
+          if(as.numeric(enriched_funcs[[node]][func_id, "P_corr"]) < func_p_cutoff) {
+            func_summaries[[func_id]]$enriched_nonsig_nodes <- c(func_summaries[[func_id]]$enriched_nonsig_nodes, node)
           } else {
-            func_summaries$balances[[func_id]]$nonenriched_nonsig_balances <- c(func_summaries$balances[[func_id]]$nonenriched_nonsig_balances, balance)
+            func_summaries[[func_id]]$nonenriched_nonsig_nodes <- c(func_summaries[[func_id]]$nonenriched_nonsig_nodes, node)
           }
         }
       } else {
-        if(balance %in% sig_balances) {
-          func_summaries$balances[[func_id]]$missing_sig_balances <- c(func_summaries$balances[[func_id]]$missing_sig_balances, balance)
+        if(node %in% sig_nodes) {
+          func_summaries[[func_id]]$missing_sig_nodes <- c(func_summaries[[func_id]]$missing_sig_nodes, node)
         } else {
-          func_summaries$balances[[func_id]]$missing_nonsig_balances <- c(func_summaries$balances[[func_id]]$missing_nonsig_balances, balance)
+          func_summaries[[func_id]]$missing_nonsig_nodes <- c(func_summaries[[func_id]]$missing_nonsig_nodes, node)
         }
       }
     }
@@ -679,223 +920,6 @@ internode_mean_max_dist <- function(phy, dist_matrix, node_labels) {
   names(internode_dist_metrics) <- c("mean", "max")
   
   return(internode_dist_metrics)
-  
-}
-
-two_group_balance_tree_pipeline <- function(abun,
-                                            func,
-                                            phylogeny,
-                                            taxa,
-                                            group1_samples,
-                                            group2_samples,
-                                            ncores=1,
-                                            pseudocount=1,
-                                            min_num_tips=10,
-                                            min_func_freq=10,
-                                            min_prop_nonzero=0.1,
-                                            name_threshold=0.9,
-                                            balance_p_cutoff = 0.05,
-                                            balance_correction = "BY",
-                                            function_p_cutoff = 0.05,
-                                            function_correction = "none",
-                                            pathway2func_map = "/home/gavin/projects/functional_reference_frames/KEGG_mappings/prepped/KO_pathways_22Aug2019.tsv",
-                                            pathway_descrip_infile = "/home/gavin/projects/functional_reference_frames/KEGG_mappings/prepped/path_descrip_22Aug2019.tsv",
-                                            func_descrip_infile = "/home/gavin/projects/functional_reference_frames/KEGG_mappings/prepped/KO_descrip_22Aug2019.tsv",
-                                            verbose=FALSE) {
-  
-  if(verbose) { message("Prepping input phylogeny.") }
-  phylogeny <- prep_tree(phy=phylogeny, tips2keep=rownames(abun))
-
-  if(verbose) { message("Calculating balances.") }
-  calculated_balances <- compute_tree_node_balances(abun=abun, phylogeny=phylogeny, ncores=ncores)
-  
-  # Determine negligible balances based on set cut-offs.
-  negligible_balances <- sapply(names(calculated_balances$balances),
-                                function(x) {
-                                  num_nonzero <- length(which(calculated_balances$balances[[x]] > 0))
-                                  total_samples <- length(calculated_balances$balances[[x]])
-                                  lhs_feat_num <- length(calculated_balances$features[[x]]$lhs)
-                                  rhs_feat_num <- length(calculated_balances$features[[x]]$rhs)
-                                  if((num_nonzero < (min_prop_nonzero * total_samples)) || (lhs_feat_num < min_num_tips) || (rhs_feat_num < min_num_tips)) {
-                                    return(TRUE)
-                                  } else {
-                                    return(FALSE) 
-                                  }
-                                })
-  if(verbose) { message("Identified ", length(negligible_balances), " of ", length(calculated_balances$balances), " nodes as negligible and will not be used for analyses.") }
-
-  calculated_balances$balances_filt <- calculated_balances$balances[which(! negligible_balances)]
-  
-  wilcox_p <- c()
-  
-  mean_direction <- c()
-  
-  for(balance in names(calculated_balances$balances_filt)) {
-    balance_wilcox <- wilcox.test(calculated_balances$balances_filt[[balance]][group1_samples],
-                                  calculated_balances$balances_filt[[balance]][group2_samples],
-                                  exact=FALSE)
-    wilcox_p <- c(wilcox_p, balance_wilcox$p.value)
-    
-    group1_mean <- mean(calculated_balances$balances_filt[[balance]][group1_samples])
-    group2_mean <- mean(calculated_balances$balances_filt[[balance]][group2_samples])
-    
-    if(group1_mean > group2_mean) {
-      mean_direction <- c(mean_direction, "group1")
-    } else if(group1_mean < group2_mean) {
-      mean_direction <- c(mean_direction, "group2")
-    } else if(group1_mean == group2_mean) {
-      mean_direction <- c(mean_direction, "same")
-      warning(paste("The calculated balance means are exactly the same for each group at node ", balance, ", which likely indicates a problem.", sep=""))
-    }
-  }
-  
-  names(mean_direction) <- names(calculated_balances$balances_filt)
-  
-  balance_p_corr <- p.adjust(wilcox_p, balance_correction)
-  
-  if(verbose) { message("Identifying enriched functions at significant nodes.") }
-  all_balances_enriched_funcs <- mclapply(names(calculated_balances$balances_filt),
-                                          function(x) {
-                                            return(node_func_fisher(node = x,
-                                                                    in_tree = phylogeny,
-                                                                    in_func = func,
-                                                                    higher_group=mean_direction[x],
-                                                                    pseudocount=1,
-                                                                    multiple_test_corr=function_correction))
-                                          },
-                                          mc.cores = ncores)
-  
-  names(all_balances_enriched_funcs) <- names(calculated_balances$balances_filt)
-  
-  sig_balances <- names(calculated_balances$balances_filt)[which(balance_p_corr < balance_p_cutoff)]
-  
-  if(verbose) { message("Summarizing significant functions across nodes.") }
-  func_summaries <- summarize_balance_enrichment(all_balances_enriched_funcs, sig_balances, function_p_cutoff)
-  
-  # Get single DF summarizing the key metrics and print this out.
-  func_descrip <- read.table(func_descrip_infile,
-                             header=FALSE, sep="\t", row.names=1, stringsAsFactors = FALSE, quote="")
-  
-  all_func_id <- c()
-  for(balance in names(all_balances_enriched_funcs)) {
-    all_func_id <- c(all_func_id, rownames(all_balances_enriched_funcs[[balance]]))
-  }
-  
-  all_func_id <- all_func_id[-which(duplicated(all_func_id))]
-  
-  if(verbose) { message("Creating results dataframe.") }
-  summary_df <- data.frame(matrix(NA, nrow=length(all_func_id), ncol=15))
-  
-  rownames(summary_df) <- all_func_id
-  
-  colnames(summary_df) <- c("func",
-                            "num_sig_balances_nonenrich",
-                            "num_sig_balances_pos_enrich",
-                            "num_sig_balances_neg_enrich",
-                            "num_sig_balances_not_present",
-                            "num_nonsig_balances_nonenrich",
-                            "num_nonsig_balances_enrich",
-                            "num_nonsig_balances_not_present",
-                            "mean_internode_dist_present",
-                            "max_internode_dist_present",
-                            "mean_internode_dist_neg_enrich",
-                            "max_internode_dist_neg_enrich",
-                            "mean_internode_dist_pos_enrich",
-                            "max_internode_dist_pos_enrich",
-                            "description")
-  
-  rownames(summary_df) <- all_func_id                                  
-  summary_df$func <- all_func_id
-  summary_df$description <- func_descrip[summary_df$func, "V2"]
-  
-  for(func_id in all_func_id) {
-    
-    summary_df[func_id, c("num_sig_balances_nonenrich",
-                          "num_sig_balances_pos_enrich",
-                          "num_sig_balances_neg_enrich",
-                          "num_sig_balances_not_present",
-                          "num_nonsig_balances_nonenrich",
-                          "num_nonsig_balances_enrich",
-                          "num_nonsig_balances_not_present")] <- c(length(func_summaries$balances[[func_id]]$nonenriched_sig_balances),
-                                                                    length(func_summaries$balances[[func_id]]$positive_balances),
-                                                                    length(func_summaries$balances[[func_id]]$negative_balances),
-                                                                    length(func_summaries$balances[[func_id]]$missing_sig_balances),
-                                                                    length(func_summaries$balances[[func_id]]$nonenriched_nonsig_balances),
-                                                                    length(func_summaries$balances[[func_id]]$enriched_nonsig_balances),
-                                                                    length(func_summaries$balances[[func_id]]$missing_nonsig_balances))
-
-    phylogeny_node_dists <- dist.nodes(phylogeny)
-    
-    all_nodes_present <- c(func_summaries$balances[[func_id]]$nonenriched_sig_balances,
-                           func_summaries$balances[[func_id]]$positive_balances,
-                           func_summaries$balances[[func_id]]$negative_balances,
-                           func_summaries$balances[[func_id]]$nonenriched_nonsig_balances,
-                           func_summaries$balances[[func_id]]$enriched_nonsig_balances)
-    
-    if(max(table(all_nodes_present)) > 1) {
-      stop("Node categorized into at least 2 mutually exclusive groups.")
-    }
-    
-    summary_df[func_id, c("mean_internode_dist_present",
-                          "max_internode_dist_present",
-                          "mean_internode_dist_neg_enrich",
-                          "max_internode_dist_neg_enrich",
-                          "mean_internode_dist_pos_enrich",
-                          "max_internode_dist_pos_enrich")] <- c(internode_mean_max_dist(phy = phylogeny, dist_matrix = phylogeny_node_dists,
-                                                                                          node_labels = all_nodes_present),
-                                                                  internode_mean_max_dist(phy = phylogeny, dist_matrix = phylogeny_node_dists,
-                                                                                          node_labels = func_summaries$balances[[func_id]]$negative_balances),
-                                                                  internode_mean_max_dist(phy = phylogeny, dist_matrix = phylogeny_node_dists,
-                                                                                          node_labels = func_summaries$balances[[func_id]]$positive_balances))
-    
-  }
-  
-  # For each significant balance, test for significantly enriched pathways as well.
-  overenriched_balance_funcs <- c()
-  underenriched_balance_funcs <- c()
-  
-  sig_balances_enriched_funcs <- all_balances_enriched_funcs[sig_balances]
-  
-  for(balance in names(sig_balances_enriched_funcs)) {
-    
-    balance_sig_func_df <- sig_balances_enriched_funcs[[balance]]
-    
-    overenriched_balance_funcs <- c(overenriched_balance_funcs, rownames(balance_sig_func_df)[which(balance_sig_func_df$OR > 1 & balance_sig_func_df$P_corr < function_p_cutoff)])
-    underenriched_balance_funcs <- c(underenriched_balance_funcs, rownames(balance_sig_func_df)[which(balance_sig_func_df$OR < 1 & balance_sig_func_df$P_corr < function_p_cutoff)])
-  }
-  
-  enriched_balance_funcs <- list(over=overenriched_balance_funcs, under=underenriched_balance_funcs)
-  
-  if(verbose) { message("Identifying enriched pathways.") }
-  sig_balances_enriched_pathways <- identify_enriched_pathways(func=func, func_subsets_to_test=enriched_balance_funcs,
-                                                               pathway2func_map=pathway2func_map, pathway_descrip_infile = pathway_descrip_infile)
-  
-  # Also return list of input parameters.
-  input_param <- list(group1_samples=group1_samples,
-                      group2_samples=group2_samples,
-                      ncores=ncores,
-                      pseudocount=pseudocount,
-                      min_num_tips=min_num_tips, 
-                      min_func_freq=min_func_freq,
-                      min_prop_nonzero=min_prop_nonzero,
-                      name_threshold=name_threshold,
-                      balance_p_cutoff = balance_p_cutoff,
-                      balance_correction = balance_correction,
-                      function_p_cutoff = function_p_cutoff,
-                      function_correction = function_correction,
-                      pathway2func_map = pathway2func_map,
-                      pathway_descrip_infile = pathway_descrip_infile,
-                      func_descrip_infile = func_descrip_infile)
-  
-  return(list(balances_info=calculated_balances,
-              sig_balances=sig_balances,
-              pathways=sig_balances_enriched_pathways,
-              funcs_per_balance=sig_balances_enriched_funcs,
-              funcs=enriched_balance_funcs,
-              df=summary_df,
-              out_list=func_summaries,
-              tree=phylogeny,
-              input_param=input_param))
   
 }
 
@@ -1014,5 +1038,164 @@ parse_sig_pathway_names <- function(pathway_list) {
     out_names <- c(out_names, paste(pathway, pathway_list[[pathway]]$descrip, sep=" - "))
   }
   return(out_names)
+}
+
+
+pairwise_mean_direction_and_wilcoxon <- function(in_list, group1, group2, corr_method="BH", ncores=1, skip_wilcoxon=FALSE) {
+  
+  wilcox_corrected_p <- NULL
+  wilcox_raw_p <- NULL
+  wilcox_output <- list()
+  mean_direction <- c()
+  
+  if(skip_wilcoxon) {
+    result <- parallel::mclapply(names(in_list), function(x) {
+      
+      group1_mean <- mean(in_list[[x]][group1])
+      group2_mean <- mean(in_list[[x]][group2])
+      
+      if(group1_mean > group2_mean) {
+        mean_direction <- c(mean_direction, "group1")
+      } else if(group1_mean < group2_mean) {
+        mean_direction <- c(mean_direction, "group2")
+      } else if(group1_mean == group2_mean) {
+        mean_direction <- c(mean_direction, "same")
+        warning(paste("The calculated means are exactly the same for each group for test ", x, ", which likely indicates a problem.", sep=""))
+      }
+      
+      return(mean_direction)
+    }, mc.cores=ncores)
+    
+    for(i in 1:length(result)) {
+      mean_direction <- c(mean_direction, result[[i]])
+    }
+    
+    
+  } else {
+    result <- parallel::mclapply(names(in_list), function(x) {
+      wilcox_out <- wilcox.test(in_list[[x]][group1], in_list[[x]][group2], exact=FALSE)
+      
+      group1_mean <- mean(in_list[[x]][group1])
+      group2_mean <- mean(in_list[[x]][group2])
+      
+      if(group1_mean > group2_mean) {
+        mean_direction <- c(mean_direction, "group1")
+      } else if(group1_mean < group2_mean) {
+        mean_direction <- c(mean_direction, "group2")
+      } else if(group1_mean == group2_mean) {
+        mean_direction <- c(mean_direction, "same")
+        warning(paste("The calculated means are exactly the same for each group for test ", x, ", which likely indicates a problem.", sep=""))
+      }
+      
+      return(list(wilcox_out=wilcox_out, mean_direction=mean_direction))
+    }, mc.cores=ncores)
+    
+    wilcox_raw_p <- c()
+    
+    for(i in 1:length(result)) {
+      wilcox_raw_p <- c(wilcox_raw_p, result[[i]]$wilcox_out$p.value)
+      wilcox_output[[i]] <- result[[i]]$wilcox_out
+      mean_direction <- c(mean_direction, result[[i]]$mean_direction)
+    }
+    
+    wilcox_corrected_p <- p.adjust(p = wilcox_raw_p, method = corr_method)
+    
+    names(wilcox_raw_p) <- names(in_list)
+    names(wilcox_corrected_p) <- names(in_list)
+    names(wilcox_output) <- names(in_list)
+  }
+  
+  names(mean_direction) <- names(in_list)
+  
+  return(list(mean_direction=mean_direction, wilcox_raw_p=wilcox_raw_p, wilcox_corrected_p=wilcox_corrected_p, wilcox_output=wilcox_output))
+}
+
+
+filter_rare_table_cols <- function(in_tab, min_nonzero_count, min_nonzero_prop, verbose=TRUE) {
+  nonzero_counts <- colSums(in_tab > 0)
+  col2remove <- which((nonzero_counts < min_nonzero_count) | (nonzero_counts / ncol(in_tab) < min_nonzero_prop))
+  if(length(col2remove) > 0) {
+    if(verbose) { message(paste("Filtering", as.character(length(col2remove)), "rare functions from input function table.")) }
+    in_tab <- in_tab[, -col2remove]
+  }
+  return(in_tab)
+}
+
+
+check_two_group_balance_args <- function(abun,
+                                         func,
+                                         phylogeny,
+                                         taxa,
+                                         group1_samples,
+                                         group2_samples,
+                                         ncores,
+                                         pseudocount,
+                                         significant_nodes,
+                                         tested_balances,
+                                         min_num_tips,
+                                         min_func_instances,
+                                         min_func_prop,
+                                         name_threshold,
+                                         balance_p_cutoff,
+                                         balance_correction,
+                                         function_p_cutoff,
+                                         function_correction,
+                                         pathway2func_map,
+                                         pathway_descrip_infile,
+                                         func_descrip_infile,
+                                         verbose) {
+  
+  if(((is.null(significant_nodes)) && (! is.null(tested_balances))) || ((! is.null(significant_nodes)) && (is.null(tested_balances)))) {
+    stop("Stopping - arguments significant_nodes and tested_balances either both need to be given or neither should be specified.")
+  }
+  
+  if((! is.null(significant_nodes)) && (length(significant_nodes) == 0)) { stop("Stopping - vector specified for significant_nodes argument is empty.") }
+  
+  if(class(abun) != "data.frame") { stop("Stopping - argument abun needs to be of the class data.frame.") }
+  if(class(func) != "data.frame") { stop("Stopping - argument func needs to be of the class data.frame.") }
+  if(class(taxa) != "data.frame") { stop("Stopping - argument taxa needs to be of the class data.frame.") }
+  if(class(phylogeny) != "phylo") { stop("Stopping - argument phylo needs to be of the class phylo.") }
+  
+  if(class(group1_samples) != "character") { stop("Stopping - argument group1_samples needs to be of the class character.") }
+  if(class(group2_samples) != "character") { stop("Stopping - argument group2_samples needs to be of the class character.") }
+  
+  if(length(group1_samples) == 0) { stop("Stopping - argument group1_samples is of length 0.") }
+  if(length(group2_samples) == 0) { stop("Stopping - argument group2_samples is of length 0.") }
+  
+  if(length(which(group1_samples %in% colnames(abun))) != length(group1_samples)) { stop("Stopping - not all group1_samples match columns of abun argument.") }
+  if(length(which(group2_samples %in% colnames(abun))) != length(group2_samples)) { stop("Stopping - not all group2_samples match columns of abun argument.") }
+  
+  if((class(ncores) != "integer") && (class(ncores) != "numeric")) { stop("Stopping - ncores argument needs to be of class numeric or integer.") }
+  if(ncores <= 0) { stop("Stopping - ncores argument needs to be higher than 0.") }
+  
+  if((class(pseudocount) != "integer") && (class(pseudocount) != "numeric")) { stop("Stopping - pseudocount argument needs to be of class numeric or integer.") }
+  if(pseudocount < 0) { stop("Stopping - pseudocount argument cannot be lower than 0.") }
+  
+  if(min_num_tips > length(phylogeny$tip.label) / 2) { stop("Stopping - the min_num_tips argument cannot be higher than half of the total number of tips.") }
+  
+  if((min_func_prop < 0) || (min_func_prop > 1)) { stop("Stopping - the min_func_prop argument must be between 0 and 1.") }
+  if((balance_p_cutoff < 0) || (balance_p_cutoff > 1)) { stop("Stopping - the balance_p_cutoff argument must be between 0 and 1.") }
+  if((function_p_cutoff < 0) || (function_p_cutoff > 1)) { stop("Stopping - the function_p_cutoff argument must be between 0 and 1.") }
+  if((name_threshold < 0) || (name_threshold > 1)) { stop("Stopping - the name_threshold argument must be between 0 and 1.") }
+  
+  if((min_func_instances < 0) || (min_func_instances > ncol(func))) { stop("Stopping - the min_func_instances argument must be between 0 and 1.") }
+  
+  if(! function_correction %in% p.adjust.methods) { stop("Stopping - function_correction argument needs to be found in p.adjust.methods.") }
+  if(! balance_correction %in% p.adjust.methods) { stop("Stopping - balance_correction argument needs to be found in p.adjust.methods.") }
+  
+  if(! file.exists(pathway2func_map)) { stop("Stopping - file corresponding to pathway2func_map argument not found.") } 
+  if(! file.exists(pathway_descrip_infile)) { stop("Stopping - file corresponding to pathway_descrip_infile argument not found.") } 
+  if(! file.exists(func_descrip_infile)) { stop("Stopping - file corresponding to func_descrip_infile argument not found.") } 
+  
+  if(! is.logical(verbose)) { stop("Stopping - verbose argument needs to be TRUE or FALSE.") }
+  
+  return(list(group1_samples=group1_samples, group2_samples=group2_samples,
+              ncores=ncores, pseudocount=pseudocount, significant_nodes=significant_nodes,
+              min_num_tips=min_num_tips, min_func_instances=min_func_instances,
+              min_func_prop=min_func_prop, name_threshold=name_threshold,
+              balance_p_cutoff=balance_p_cutoff, balance_correction=balance_correction,
+              function_p_cutoff=function_p_cutoff, function_correction=function_correction,
+              pathway2func_map=pathway2func_map, pathway_descrip_infile=pathway_descrip_infile,
+              func_descrip_infile=func_descrip_infile, verbose=verbose))
 }
 
