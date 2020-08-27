@@ -1,12 +1,7 @@
 library(ape)
-library(ALDEx2)
-library(corncob)
-library(fastcluster)
-library(grid)
 library(parallel)
 library(phangorn)
 library(stringr)
-library(VennDiagram)
 
 two_group_balance_tree_pipeline <- function(abun,
                                             func,
@@ -26,8 +21,6 @@ two_group_balance_tree_pipeline <- function(abun,
                                             balance_correction = "BY",
                                             function_p_cutoff = 0.05,
                                             function_correction = "none",
-                                            pathway2func_map = "/home/gavin/projects/POMS/KEGG_mappings/prepped/KO_pathways_22Aug2019.tsv",
-                                            pathway_descrip_infile = "/home/gavin/projects/POMS/KEGG_mappings/prepped/path_descrip_22Aug2019.tsv",
                                             func_descrip_infile = "/home/gavin/projects/POMS/KEGG_mappings/prepped/KO_descrip_22Aug2019.tsv",
                                             verbose=FALSE) {
   
@@ -39,7 +32,6 @@ two_group_balance_tree_pipeline <- function(abun,
                                               min_func_prop=min_func_prop, name_threshold=name_threshold,
                                               balance_p_cutoff=balance_p_cutoff, balance_correction=balance_correction,
                                               function_p_cutoff=function_p_cutoff, function_correction=function_correction,
-                                              pathway2func_map=pathway2func_map, pathway_descrip_infile=pathway_descrip_infile,
                                               func_descrip_infile=func_descrip_infile, verbose=verbose)
   
   if(verbose) { message("Prepping input phylogeny.") }
@@ -66,6 +58,8 @@ two_group_balance_tree_pipeline <- function(abun,
   } else {
     
     sig_nodes <- significant_nodes
+    
+    if(any(! sig_nodes %in% phylogeny$node.label)) { stop("Not all sig. nodes are not found in phylogeny.")}
     
     calculated_balances <- list()
     calculated_balances$balances <- tested_balances
@@ -184,31 +178,11 @@ two_group_balance_tree_pipeline <- function(abun,
     
   }
   
-  # For each significant node, test for significantly enriched pathways as well.
-  overenriched_node_funcs <- c()
-  underenriched_node_funcs <- c()
-  
   sig_nodes_enriched_funcs <- all_balances_enriched_funcs[sig_nodes]
-  
-  for(node in names(sig_nodes_enriched_funcs)) {
-    
-    node_sig_func_df <- sig_nodes_enriched_funcs[[node]]
-    
-    overenriched_node_funcs <- c(overenriched_node_funcs, rownames(node_sig_func_df)[which(node_sig_func_df$OR > 1 & node_sig_func_df$P_corr < function_p_cutoff)])
-    underenriched_node_funcs <- c(underenriched_node_funcs, rownames(node_sig_func_df)[which(node_sig_func_df$OR < 1 & node_sig_func_df$P_corr < function_p_cutoff)])
-  }
-  
-  enriched_node_funcs <- list(over=overenriched_node_funcs, under=underenriched_node_funcs)
-  
-  if(verbose) { message("Identifying enriched pathways.") }
-  sig_nodes_enriched_pathways <- identify_enriched_pathways(func=func, func_subsets_to_test=enriched_node_funcs,
-                                                            pathway2func_map=pathway2func_map, pathway_descrip_infile = pathway_descrip_infile)
   
   return(list(balances_info=calculated_balances,
               sig_nodes=sig_nodes,
-              pathways=sig_nodes_enriched_pathways,
               funcs_per_node=sig_nodes_enriched_funcs,
-              funcs=enriched_node_funcs,
               df=summary_df,
               out_list=func_summaries,
               tree=phylogeny,
@@ -237,7 +211,7 @@ parse_taxa_to_df <- function(infile, asvs2keep) {
     
     for(taxon_i in 1:7) {
       str_match <- paste(taxa_labels[taxon_i], ".*;", taxa_labels[taxon_i + 1], sep="")
-      otu_taxon <- str_extract(disease_taxa[otu], str_match)
+      otu_taxon <- stringr::str_extract(disease_taxa[otu], str_match)
       otu_taxon <- sub(taxa_labels[taxon_i], "", otu_taxon)
       otu_taxon <- sub(paste(";", taxa_labels[taxon_i + 1], sep=""), "", otu_taxon)
       if(otu_taxon != "") {
@@ -249,44 +223,6 @@ parse_taxa_to_df <- function(infile, asvs2keep) {
   return(taxa_table)
 }
 
-determine_balance_groups <- function(func, func_by_asv, asv_dist, ideal_sibling_size, min_sibling_size) {
-  
-  func_pos_asvs <- which(func_by_asv[, func] > 0)
-  
-  focal_asvs <- rownames(func_by_asv)[func_pos_asvs]
-  
-  asv_dist[func_pos_asvs, func_pos_asvs] <- 0
-  
-  colnames(asv_dist) <- rownames(func_by_asv)
-  rownames(asv_dist) <- rownames(func_by_asv)
-  
-  asv_dist_phylo <- as.phylo(fastcluster::hclust(as.dist(asv_dist)))
-  asv_dist_phylo <- makeNodeLabel(asv_dist_phylo, method="number", prefix='n')
-  
-  if(length(focal_asvs) > 1) {
-    func_grouping_mrca <- getMRCA(asv_dist_phylo, focal_asvs)
-  } else {
-    func_grouping_mrca <- which(asv_dist_phylo$tip.label == focal_asvs[1])
-  }
-  
-  # Double-check that only descendants of MRCA are the tips contributing the same function.
-  tips_match_check <- check_node_tips_match_expected(tree = asv_dist_phylo, node = func_grouping_mrca, expected_tips = sort(focal_asvs))
-  if(! tips_match_check$match) {
-    stop(tips_match_check$err)
-  }
-  
-  func_grouping_mrca_sibling <- Siblings(x = asv_dist_phylo, node = func_grouping_mrca)
-  
-  sibling_asvs <- asv_dist_phylo$tip.label[Descendants(asv_dist_phylo, func_grouping_mrca_sibling, type = "tips")[[1]]]
-  
-  if(length(sibling_asvs) < ideal_sibling_size) {
-    asv_dist_phylo <- drop.tip(phy = asv_dist_phylo, tip = func_pos_asvs, trim.internal = TRUE)
-    sibling_asvs <- determine_min_sibling_group(tree=asv_dist_phylo, sibling_tips=sibling_asvs, ideal_clade_size=ideal_sibling_size, min_clade_size=min_sibling_size)
-  }
-  
-  return(list(focal=focal_asvs, sibling=sibling_asvs))
-  
-}
 
 determine_min_sibling_group <- function(tree, sibling_tips, ideal_clade_size, min_clade_size) {
   
@@ -405,7 +341,7 @@ func_pathway_set <- function(pathway2func) {
   pathway2funcsets <- list()
   for(pathway in rownames(pathway2func)) {
     
-    pathway_funcs <- str_split(pathway2func[pathway, 1], pattern = ",")[[1]]
+    pathway_funcs <- stringr::str_split(pathway2func[pathway, 1], pattern = ",")[[1]]
     
     if(length(which(pathway_funcs == "")) > 0) {
       pathway_funcs <- pathway_funcs[-which(pathway_funcs == "")]
@@ -491,37 +427,6 @@ node_func_fisher <- function(node, in_tree, in_func, higher_group, pseudocount=N
   return(node_fisher_tests)
 }
 
-threeWayVennWrapper <- function(set1, set2, set3,
-                                labels=c("cat1", "cat2", "cat3"),
-                                colours=c("#009E73", "#E69F00", "#56B4E9")) {
-  
-  set1_count <- length(set1)
-  set2_count <- length(set2)
-  set3_count <- length(set3)
-  set1_2_count <- length(which(set1 %in% set2))
-  set2_3_count <- length(which(set2 %in% set3))
-  set1_3_count <- length(which(set1 %in% set3))
-  set1_2_3_count_TMP <- set1[which(set1 %in% set2)]
-  set1_2_3_count <- length(set1_2_3_count_TMP[which(set1_2_3_count_TMP %in% set3)])
-  
-  grid.newpage()
-  
-  venn_out <- draw.triple.venn(area1=set1_count,
-                               area2=set2_count,
-                               area3=set3_count,
-                               n12 = set1_2_count,
-                               n23 = set2_3_count,
-                               n13 = set1_3_count,
-                               n123 = set1_2_3_count,
-                               category = labels,
-                               scaled=TRUE,
-                               fill = colours,
-                               cex=rep(2, 7),
-                               cat.cex=rep(2, 3))
-  
-  return(venn_out)
-  
-}
 
 calc_OR <- function(exposed_pos, exposed_neg, control_pos, control_neg) {
   return((exposed_pos / exposed_neg) / (control_pos / control_neg))  
@@ -569,97 +474,19 @@ subset_abun_table <- function(in_abun, col2keep) {
   return(in_abun)
 }
 
-identify_enriched_pathways <- function(func, func_subsets_to_test, pathway2func_map, pathway_descrip_infile) {
-  
-  # Prep pathway mapfiles.
-  pathway_descrip <- read.table(pathway_descrip_infile,
-                                header=FALSE, sep="\t", row.names=1, quote="", comment.char="", stringsAsFactors = FALSE)
-  
-  pathway2func <- read.table(file = pathway2func_map,
-                             sep="\t", header=FALSE, stringsAsFactors = FALSE, row.names=1)
-  pathway2funcsets <- list()
-  for(pathway in rownames(pathway2func)) {
-    
-    pathway_funcs <- str_split(pathway2func[pathway, 1], pattern = ",")[[1]]
-    
-    if(length(which(pathway_funcs == "")) > 0) {
-      pathway_funcs <- pathway_funcs[-which(pathway_funcs == "")]
-    }
-    
-    pathway2funcsets[[pathway]] <- pathway_funcs
-  }
-  
-  # Get background of how many functions across ASVs in this dataset are in each pathway.
-  total_funcs <- sum(colSums(func))
-  background_pathway_func_counts <- c()
-  
-  for(pathway in names(pathway2funcsets)) {
-    func_set <- pathway2funcsets[[pathway]]
-    func_set <- func_set[which(func_set %in% colnames(func))]
-    
-    if(length(func_set) <= 2) {
-      background_pathway_func_counts <- c(background_pathway_func_counts, NA) 
-    } else {
-      background_pathway_func_counts <- c(background_pathway_func_counts, sum(func[, func_set]))
-    }
-  }
-  
-  names(background_pathway_func_counts) <- names(pathway2funcsets)
-  background_pathway_func_counts <- background_pathway_func_counts[-which(is.na(background_pathway_func_counts))]
-  pathway2funcsets <- pathway2funcsets[names(background_pathway_func_counts)]
-  
-  enriched_pathways <- list()
-
-  for(n in names(func_subsets_to_test)) {
-    pathway_fisher_tests <- c()
-    pathway_ORs <- c()
-    pathway_raw_counts <- list()
-    enriched_pathways[[n]] <- list()
-    
-    for(pathway in names(pathway2funcsets)) {
-      positive_count <- length(which(func_subsets_to_test[[n]] %in% pathway2funcsets[[pathway]]))
-      
-      pathway_raw_counts[[pathway]] <- matrix(c(positive_count,
-                                                length(func_subsets_to_test[[n]]) - positive_count,
-                                                background_pathway_func_counts[pathway],
-                                                total_funcs - background_pathway_func_counts[pathway]),
-                                              nrow=2)
-      
-      fisher_test <- fisher.test(matrix(c(positive_count,
-                                          length(func_subsets_to_test[[n]]) - positive_count,
-                                          background_pathway_func_counts[pathway],
-                                          total_funcs - background_pathway_func_counts[pathway]),
-                                        nrow=2), alternative="greater")
-      
-      pathway_fisher_tests <- c(pathway_fisher_tests, fisher_test$p.value)
-      
-      pathway_ORs <- c(pathway_ORs, calc_OR(exposed_pos = positive_count,
-                                            exposed_neg = length(func_subsets_to_test[[n]]) - positive_count,
-                                            control_pos = background_pathway_func_counts[pathway],
-                                            control_neg = total_funcs - background_pathway_func_counts[pathway]))
-      
-    }
-    
-    pathway_fisher_tests_BY <- p.adjust(pathway_fisher_tests, "BY")
-    
-    for(i in which(pathway_fisher_tests_BY < 0.05)) {
-      pathway_id <- names(pathway2funcsets)[i]
-      enriched_pathways[[n]][[pathway_id]] <- list(P=pathway_fisher_tests[i],
-                                                   BY=pathway_fisher_tests_BY[i],
-                                                   OR=pathway_ORs[i],
-                                                   raw_counts=pathway_raw_counts[[pathway_id]],
-                                                   descrip=pathway_descrip[pathway_id, "V2"])
-    }
-  }
-  
-  return(enriched_pathways)
-}
 
 calc_func_abun <- function(in_abun, in_func, ncores=1) {
   
   out_df <- data.frame(matrix(NA, nrow=ncol(in_func), ncol=ncol(in_abun)))
   colnames(out_df) <- colnames(in_abun)
   rownames(out_df) <- colnames(in_func)
+  
+  # Check that all rows are found in function table.
+  if(length(which(! rownames(in_abun) %in% rownames(in_func))) > 0) {
+    stop("Stoppings - some rows in abundance table not found in function table.")
+  }
+  
+  in_func <- in_func[rownames(in_abun), ]
   
   out_sample_func_abun <- mclapply(colnames(in_abun), function(x) { return(colSums(in_abun[, x] * in_func)) }, mc.cores=ncores)
   names(out_sample_func_abun) <- colnames(in_abun)
@@ -672,51 +499,7 @@ calc_func_abun <- function(in_abun, in_func, ncores=1) {
   
 }
 
-# Run other differential abundance tools.
-run_2group_ALDEx2 <- function(in_table, group1_samples, group2_samples) {
-  in_table <- round(in_table[, c(group1_samples, group2_samples)])
-  return(aldex(reads = in_table, conditions=c(rep("group1", length(group1_samples)), rep("group2", length(group2_samples)))))
-}
 
-run_2group_corncob <- function(in_table, group1_samples, group2_samples) {
-  
-  in_table <- in_table[, c(group1_samples, group2_samples)]
-  
-  sample_meta <- data.frame(grouping=c(rep("group1", length(group1_samples)),
-                                       rep("group2", length(group2_samples))))
-  
-  rownames(sample_meta) <- colnames(in_table)
-  
-  return(differentialTest(formula = . ~ grouping,
-                          phi.formula = ~ grouping,
-                          formula_null = ~ 1,
-                          phi.formula_null = ~ grouping,
-                          data = in_table,
-                          test = "Wald",
-                          boot = FALSE,
-                          sample_data = sample_meta,
-                          taxa_are_rows = TRUE))
-}
-
-corncob_determine_sig_sets <- function(in_table, corncob_out, group1_samples, group2_samples) {
-  
-  corncob_out_all_sig <- names(corncob_out$BY)[which(corncob_out$BY < 0.05)]
-  
-  corncob_out_group1_higher <- c()
-  corncob_out_group1_lower <- c()
-  
-  for(func in corncob_out_all_sig) {
-    mean_diff <- mean(as.numeric(in_table[func, group1_samples])) - mean(as.numeric(in_table[func, group2_samples]))
-    if(mean_diff > 0) {
-      corncob_out_group1_higher <- c(corncob_out_group1_higher, func)
-    } else if(mean_diff < 0) {
-      corncob_out_group1_lower <- c(corncob_out_group1_lower, func)
-    }
-  }
-  
-  return(list(all_sig=corncob_out_all_sig, group1_higher=corncob_out_group1_higher, group1_lower=corncob_out_group1_lower))
-  
-}
 
 wilcoxon_2group_pvalues <- function(intable, group1_samples, group2_samples) {
   group1_intable <- intable[, group1_samples]
@@ -739,6 +522,10 @@ compute_tree_node_balances <- function(phylogeny, abun, min_num_tips, ncores=1, 
   ### Function to perform isomatric log-ratio transformation of feature abundances at each node in the tree.
   ### Will return a list containing the features on the left-hand side (lhs) and right-hand side (rhs) of each
   ### node in a tree ("features") and also the computed balances ("balances").
+  
+  if(is.null(phylogeny$node.label)) {
+   stop("Stopping - input tree does not have any node labels.") 
+  }
   
   # Test all nodes unless subset specified.  
   if(! is.null(subset2test)) {
@@ -1140,8 +927,6 @@ check_two_group_balance_args <- function(abun,
                                          balance_correction,
                                          function_p_cutoff,
                                          function_correction,
-                                         pathway2func_map,
-                                         pathway_descrip_infile,
                                          func_descrip_infile,
                                          verbose) {
   
@@ -1183,8 +968,6 @@ check_two_group_balance_args <- function(abun,
   if(! function_correction %in% p.adjust.methods) { stop("Stopping - function_correction argument needs to be found in p.adjust.methods.") }
   if(! balance_correction %in% p.adjust.methods) { stop("Stopping - balance_correction argument needs to be found in p.adjust.methods.") }
   
-  if(! file.exists(pathway2func_map)) { stop("Stopping - file corresponding to pathway2func_map argument not found.") } 
-  if(! file.exists(pathway_descrip_infile)) { stop("Stopping - file corresponding to pathway_descrip_infile argument not found.") } 
   if(! file.exists(func_descrip_infile)) { stop("Stopping - file corresponding to func_descrip_infile argument not found.") } 
   
   if(! is.logical(verbose)) { stop("Stopping - verbose argument needs to be TRUE or FALSE.") }
@@ -1195,7 +978,109 @@ check_two_group_balance_args <- function(abun,
               min_func_prop=min_func_prop, name_threshold=name_threshold,
               balance_p_cutoff=balance_p_cutoff, balance_correction=balance_correction,
               function_p_cutoff=function_p_cutoff, function_correction=function_correction,
-              pathway2func_map=pathway2func_map, pathway_descrip_infile=pathway_descrip_infile,
               func_descrip_infile=func_descrip_infile, verbose=verbose))
 }
 
+outlier_func_enriched_pathways <- function(summary_df,
+                                           pos_cutoff,
+                                           neg_cutoff,
+                                           p_corr_method="BH",
+                                           corr_P_cutoff=0.05,
+                                           pathway2func_map = "/home/gavin/projects/POMS/KEGG_mappings/prepped/KO_pathways_22Aug2019.tsv",
+                                           pathway_descrip_infile = "/home/gavin/projects/POMS/KEGG_mappings/prepped/path_descrip_22Aug2019.tsv") {
+  
+  
+  if(! file.exists(pathway2func_map)) { stop("Stopping - file corresponding to pathway2func_map argument not found.") } 
+  if(! file.exists(pathway_descrip_infile)) { stop("Stopping - file corresponding to pathway_descrip_infile argument not found.") } 
+  
+  # Prep pathway mapfiles.
+  pathway_descrip <- read.table(pathway_descrip_infile,
+                                header=FALSE, sep="\t", row.names=1, quote="", comment.char="", stringsAsFactors = FALSE)
+  
+  pathway2func <- read.table(file = pathway2func_map,
+                             sep="\t", header=FALSE, stringsAsFactors = FALSE, row.names=1)
+  pathway2funcsets <- list()
+  
+  
+  for(pathway in rownames(pathway2func)) {
+    
+    pathway_funcs <- stringr::str_split(pathway2func[pathway, 1], pattern = ",")[[1]]
+    
+    if(length(which(pathway_funcs == "")) > 0) {
+      pathway_funcs <- pathway_funcs[-which(pathway_funcs == "")]
+    }
+    
+    if(length(which(! pathway_funcs %in% summary_df$func)) > 0) {
+      pathway_funcs <- pathway_funcs[-which(! pathway_funcs %in% summary_df$func)]
+    }
+    
+    pathway2funcsets[[pathway]] <- pathway_funcs
+  }
+  
+  # Get background of how many functions in this dataset are in each pathway.
+  total_funcs <- length(summary_df$func)
+  background_pathway_func_counts <- c()
+  
+  for(pathway in names(pathway2funcsets)) {
+    func_set <- pathway2funcsets[[pathway]]
+    func_set <- func_set[which(func_set %in% summary_df$func)]
+    
+    if(length(func_set) <= 2) {
+      background_pathway_func_counts <- c(background_pathway_func_counts, NA)
+    } else {
+      background_pathway_func_counts <- c(background_pathway_func_counts, length(func_set))
+    }
+  }
+  
+  names(background_pathway_func_counts) <- names(pathway2funcsets)
+  
+  if(length(which(is.na(background_pathway_func_counts))) > 0) {
+    background_pathway_func_counts <- background_pathway_func_counts[-which(is.na(background_pathway_func_counts))]
+    pathway2funcsets <- pathway2funcsets[names(background_pathway_func_counts)]
+  }
+  
+  func_subsets_to_test <- list(up=summary_df$func[which(summary_df$num_sig_nodes_pos_enrich >= pos_cutoff)],
+                               down=summary_df$func[which(summary_df$num_sig_nodes_neg_enrich >= neg_cutoff)])
+  
+  enriched_pathways <- list()
+  
+  for(n in names(func_subsets_to_test)) {
+    pathway_fisher_tests <- c()
+    pathway_ORs <- c()
+    pathway_raw_counts <- list()
+    enriched_pathways[[n]] <- list()
+    
+    for(pathway in names(pathway2funcsets)) {
+      positive_count <- length(which(func_subsets_to_test[[n]] %in% pathway2funcsets[[pathway]]))
+      
+      pathway_raw_counts[[pathway]] <- matrix(c(positive_count,
+                                                length(func_subsets_to_test[[n]]) - positive_count,
+                                                background_pathway_func_counts[pathway],
+                                                total_funcs - background_pathway_func_counts[pathway]),
+                                              nrow=2)
+      
+      fisher_test <- fisher.test(pathway_raw_counts[[pathway]], alternative="greater")
+      
+      pathway_fisher_tests <- c(pathway_fisher_tests, fisher_test$p.value)
+      
+      pathway_ORs <- c(pathway_ORs, calc_OR(exposed_pos = positive_count,
+                                            exposed_neg = length(func_subsets_to_test[[n]]) - positive_count,
+                                            control_pos = background_pathway_func_counts[pathway],
+                                            control_neg = total_funcs - background_pathway_func_counts[pathway]))
+      
+    }
+    
+    pathway_fisher_tests_corr <- p.adjust(pathway_fisher_tests, p_corr_method)
+    
+    for(i in which(pathway_fisher_tests_corr < corr_P_cutoff)) {
+      pathway_id <- names(pathway2funcsets)[i]
+      enriched_pathways[[n]][[pathway_id]] <- list(P=pathway_fisher_tests[i],
+                                                   P_corr=pathway_fisher_tests_corr[i],
+                                                   OR=pathway_ORs[i],
+                                                   raw_counts=pathway_raw_counts[[pathway_id]],
+                                                   descrip=pathway_descrip[pathway_id, "V2"])
+    }
+  }
+  
+  return(enriched_pathways)
+}
