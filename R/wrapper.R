@@ -9,7 +9,6 @@
 two_group_balance_tree_pipeline <- function(abun,
                                             func,
                                             phylogeny,
-                                            taxa,
                                             group1_samples,
                                             group2_samples,
                                             ncores=1,
@@ -25,10 +24,11 @@ two_group_balance_tree_pipeline <- function(abun,
                                             function_p_cutoff = 0.05,
                                             function_correction = "none",
                                             func_descrip_infile = "/home/gavin/projects/POMS/KEGG_mappings/prepped/KO_descrip_22Aug2019.tsv",
+                                            skip_node_dist=FALSE,
                                             verbose=FALSE) {
 
   if(verbose) { message("Checking input arguments.") }
-  input_param <- check_two_group_balance_args(abun=abun, func=func, phylogeny=phylogeny, taxa=taxa,
+  input_param <- check_two_group_balance_args(abun=abun, func=func, phylogeny=phylogeny,
                                               group1_samples=group1_samples, group2_samples=group2_samples,
                                               ncores=ncores, pseudocount=pseudocount, significant_nodes=significant_nodes,
                                               tested_balances=tested_balances, min_num_tips=min_num_tips, min_func_instances=min_func_instances,
@@ -139,7 +139,9 @@ two_group_balance_tree_pipeline <- function(abun,
   summary_df$func <- all_func_id
   summary_df$description <- func_descrip[summary_df$func, "V2"]
 
-  phylogeny_node_dists <- dist.nodes(phylogeny)
+  if(! skip_node_dist) {
+    phylogeny_node_dists <- dist.nodes(phylogeny)
+  }
 
   for(func_id in all_func_id) {
 
@@ -167,17 +169,19 @@ two_group_balance_tree_pipeline <- function(abun,
       stop("Node categorized into at least 2 mutually exclusive groups.")
     }
 
-    summary_df[func_id, c("mean_internode_dist_present",
-                          "max_internode_dist_present",
-                          "mean_internode_dist_neg_enrich",
-                          "max_internode_dist_neg_enrich",
-                          "mean_internode_dist_pos_enrich",
-                          "max_internode_dist_pos_enrich")] <- c(internode_mean_max_dist(phy = phylogeny, dist_matrix = phylogeny_node_dists,
-                                                                                         node_labels = all_nodes_present),
-                                                                 internode_mean_max_dist(phy = phylogeny, dist_matrix = phylogeny_node_dists,
-                                                                                         node_labels = func_summaries[[func_id]]$negative_nodes),
-                                                                 internode_mean_max_dist(phy = phylogeny, dist_matrix = phylogeny_node_dists,
-                                                                                         node_labels = func_summaries[[func_id]]$positive_nodes))
+    if(! skip_node_dist) {
+      summary_df[func_id, c("mean_internode_dist_present",
+                            "max_internode_dist_present",
+                            "mean_internode_dist_neg_enrich",
+                            "max_internode_dist_neg_enrich",
+                            "mean_internode_dist_pos_enrich",
+                            "max_internode_dist_pos_enrich")] <- c(internode_mean_max_dist(phy = phylogeny, dist_matrix = phylogeny_node_dists,
+                                                                                           node_labels = all_nodes_present),
+                                                                   internode_mean_max_dist(phy = phylogeny, dist_matrix = phylogeny_node_dists,
+                                                                                           node_labels = func_summaries[[func_id]]$negative_nodes),
+                                                                   internode_mean_max_dist(phy = phylogeny, dist_matrix = phylogeny_node_dists,
+                                                                                           node_labels = func_summaries[[func_id]]$positive_nodes))
+    }
 
   }
 
@@ -197,7 +201,6 @@ two_group_balance_tree_pipeline <- function(abun,
 check_two_group_balance_args <- function(abun,
                                          func,
                                          phylogeny,
-                                         taxa,
                                          group1_samples,
                                          group2_samples,
                                          ncores,
@@ -223,7 +226,6 @@ check_two_group_balance_args <- function(abun,
 
   if(class(abun) != "data.frame") { stop("Stopping - argument abun needs to be of the class data.frame.") }
   if(class(func) != "data.frame") { stop("Stopping - argument func needs to be of the class data.frame.") }
-  if(class(taxa) != "data.frame") { stop("Stopping - argument taxa needs to be of the class data.frame.") }
   if(class(phylogeny) != "phylo") { stop("Stopping - argument phylo needs to be of the class phylo.") }
 
   if(class(group1_samples) != "character") { stop("Stopping - argument group1_samples needs to be of the class character.") }
@@ -333,3 +335,68 @@ summarize_node_enrichment <- function(enriched_funcs, sig_nodes, func_p_cutoff) 
   return(func_summaries)
 }
 
+
+
+POM_pseudo_null <- function(focal_node_balances,
+                            num_sig_nodes,
+                            abun,
+                            func,
+                            phylogeny,
+                            ncores,
+                            group1_samples,
+                            group2_samples,
+                            num_null_rep=1000) {
+  
+  pseudo_null_output <- list()
+  
+  for(rep in 1:num_null_rep) {
+    
+    rep_rand_nodes <- sample(nodes_to_consider, num_sig_nodes)
+    
+    pseudo_null_output[[rep]] <- two_group_balance_tree_pipeline(abun = abun,
+                                                                 func = func,
+                                                                 phylogeny = phylogeny,
+                                                                 group1_samples = group1_samples,
+                                                                 group2_samples = group2_samples,
+                                                                 ncores = ncores,
+                                                                 significant_nodes = rep_rand_nodes,
+                                                                 tested_balances = focal_node_balances,
+                                                                 skip_node_dist = TRUE)
+  }
+  
+  return(pseudo_null_output)
+  
+}
+
+pseudo_null_pvalues <- function(funcs2test, pseudo_null_out, actual_df) {
+  
+  num_null_rep <- length(pseudo_null_out)
+  
+  message(paste("P-values estimated based on ", as.character(num_null_rep), " pseudo-null replicates."))
+  
+  func_pseudo_pvalues <- c()
+  
+  for(func in funcs2test) {
+    
+    abs_enrich <- abs(actual_df[func, "num_sig_nodes_pos_enrich"] - actual_df[func, "num_sig_nodes_neg_enrich"])
+    
+    num_equal_or_greater <- 0
+    
+    for(i in 1:num_null_rep) {
+      
+      pseudo_abs_enrich <- abs(pseudo_null_out[[i]]$df[func, "num_sig_nodes_pos_enrich"] - pseudo_null_out[[i]]$df[func, "num_sig_nodes_neg_enrich"])
+      
+      if(pseudo_abs_enrich >= abs_enrich) {
+        num_equal_or_greater = num_equal_or_greater + 1
+      }
+      
+    }
+    
+    func_pseudo_pvalues <- c(func_pseudo_pvalues, num_equal_or_greater / num_null_rep)
+    
+  }
+  
+  names(func_pseudo_pvalues) <- funcs2test
+  
+  return(func_pseudo_pvalues)
+}
