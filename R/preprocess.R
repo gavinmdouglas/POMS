@@ -10,92 +10,92 @@ filter_rare_table_cols <- function(in_tab, min_nonzero_count, min_nonzero_prop, 
 }
 
 #' @export
-prep_tree_sig_balances <- function(in_list, taxa_table) {
+prep_tree_sig_nodes <- function(in_list, taxa_table) {
   
-  all_sig_balances <- c()
-  for(func in names(in_list$out_list$balances)) {
-    all_sig_balances <- c(all_sig_balances,
-                          in_list$out_list$balances[[func]]$positive_balances,
-                          in_list$out_list$balances[[func]]$negative_balances)
+  all_sig_nodes <- c()
+  for(func in names(in_list$out_list$nodes)) {
+    all_sig_nodes <- c(all_sig_nodes,
+                       in_list$out_list$nodes[[func]]$positive_nodes,
+                       in_list$out_list$nodes[[func]]$negative_nodes)
   }
   
-  all_sig_balances <- all_sig_balances[-which(duplicated(all_sig_balances))]
+  all_sig_nodes <- all_sig_nodes[-which(duplicated(all_sig_nodes))]
   
   sig_node_taxa <- list()
   
-  for(node in all_sig_balances) {
-    sig_node_taxa[[node]] <- balance_taxa_name(lhs_features = in_list$balances_info$features[[node]]$lhs,
-                                               rhs_features = in_list$balances_info$features[[node]]$rhs,
+  for(node in all_sig_nodes) {
+    sig_node_taxa[[node]] <- balance_taxa_name(lhs_features = in_list$nodes_info$features[[node]]$lhs,
+                                               rhs_features = in_list$nodes_info$features[[node]]$rhs,
                                                taxa = taxa_table)
   }
   
   tree_sig_subset <- in_list$tree
-  nodes2ignore <- which(! tree_sig_subset$node.label %in% all_sig_balances)
-  for(node in all_sig_balances) {
+  nodes2ignore <- which(! tree_sig_subset$node.label %in% all_sig_nodes)
+  for(node in all_sig_nodes) {
     tree_sig_subset$node.label[which(tree_sig_subset$node.label == node)] <- sig_node_taxa[[node]]
   }
   tree_sig_subset$node.label[nodes2ignore] <- ""
   
-  all_sig_balances_i <- which(tree_sig_subset$node.label != "") + length(tree_sig_subset$tip.label)
+  all_sig_nodes_i <- which(tree_sig_subset$node.label != "") + length(tree_sig_subset$tip.label)
   
-  return(list(prepped_tree=tree_sig_subset, nodes2plot=all_sig_balances_i))
+  return(list(prepped_tree=tree_sig_subset, nodes2plot=all_sig_nodes_i))
 }
 
 #' @export
-prep_tree_balances_func <- function(in_list, focal_func, taxa_table) {
+prep_tree_nodes_func <- function(in_list, focal_func, taxa_table) {
   
-  all_sig_balances <- c()
-  for(func in names(in_list$out_list$balances)) {
-    all_sig_balances <- c(all_sig_balances,
-                          in_list$out_list$balances[[func]]$positive_balances,
-                          in_list$out_list$balances[[func]]$negative_balances)
+  all_sig_nodes <- c()
+  for(func in names(in_list$out_list$nodes)) {
+    all_sig_nodes <- c(all_sig_nodes,
+                          in_list$out_list$nodes[[func]]$positive_nodes,
+                          in_list$out_list$nodes[[func]]$negative_nodes)
   }
   
-  all_sig_balances <- all_sig_balances[-which(duplicated(all_sig_balances))]
+  all_sig_nodes <- all_sig_nodes[-which(duplicated(all_sig_nodes))]
   
   sig_node_taxa <- list()
   
-  for(node in all_sig_balances) {
-    sig_node_taxa[[node]] <- balance_taxa_name(lhs_features = in_list$balances_info$features[[node]]$lhs,
-                                               rhs_features = in_list$balances_info$features[[node]]$rhs,
+  for(node in all_sig_nodes) {
+    sig_node_taxa[[node]] <- node_taxa_name(lhs_features = in_list$nodes_info$features[[node]]$lhs,
+                                               rhs_features = in_list$nodes_info$features[[node]]$rhs,
                                                taxa = taxa_table)
   }
   
   tree_sig_subset <- in_list$tree
-  nodes2ignore <- which(! tree_sig_subset$node.label %in% all_sig_balances)
-  for(node in all_sig_balances) {
+  nodes2ignore <- which(! tree_sig_subset$node.label %in% all_sig_nodes)
+  for(node in all_sig_nodes) {
     tree_sig_subset$node.label[which(tree_sig_subset$node.label == node)] <- sig_node_taxa[[node]]
   }
   tree_sig_subset$node.label[nodes2ignore] <- ""
   
-  enriched_balances <- c()
-  depleted_balances <- c()
+  enriched_nodes <- c()
+  depleted_nodes <- c()
   
-  for(balance in all_sig_balances) {
+  for(node in all_sig_nodes) {
     
-    if(! focal_func %in% rownames(in_list$funcs_per_balance[[balance]])) {
+    if(! focal_func %in% rownames(in_list$funcs_per_node[[node]])) {
       next
     }
     
-    if(in_list$funcs_per_balance[[balance]][focal_func, "P"] < 0.05) {
-      if(in_list$funcs_per_balance[[balance]][focal_func, "OR"] > 1) {
-        enriched_balances <- c(enriched_balances, balance)
-      } else if(in_list$funcs_per_balance[[balance]][focal_func, "OR"] < 1) {
-        depleted_balances <- c(depleted_balances, balance)
+    if(in_list$funcs_per_node[[node]][focal_func, "P"] < 0.05) {
+      if(in_list$funcs_per_node[[node]][focal_func, "OR"] > 1) {
+        enriched_nodes <- c(enriched_nodes, node)
+      } else if(in_list$funcs_per_node[[node]][focal_func, "OR"] < 1) {
+        depleted_nodes <- c(depleted_nodes, node)
       }
     }
   }
   
-  enriched_balances_i <- which(in_list$tree$node.label %in% enriched_balances) + length(in_list$tree$tip.label)
+  enriched_nodes_i <- which(in_list$tree$node.label %in% enriched_nodes) + length(in_list$tree$tip.label)
   
-  depleted_balances_i <- which(in_list$tree$node.label %in% depleted_balances) + length(in_list$tree$tip.label)
+  depleted_nodes_i <- which(in_list$tree$node.label %in% depleted_nodes) + length(in_list$tree$tip.label)
   
-  all_sig_balances_minus_enriched_depleted <- all_sig_balances[which(! all_sig_balances %in% enriched_balances)]
-  all_sig_balances_minus_enriched_depleted <- all_sig_balances_minus_enriched_depleted[which(! all_sig_balances_minus_enriched_depleted %in% depleted_balances)]
+  all_sig_nodes_minus_enriched_depleted <- all_sig_nodes[which(! all_sig_nodes %in% enriched_nodes)]
+  all_sig_nodes_minus_enriched_depleted <- all_sig_nodes_minus_enriched_depleted[which(! all_sig_nodes_minus_enriched_depleted %in% depleted_nodes)]
   
-  nonsig_balances_i <- which(in_list$tree$node.label %in% all_sig_balances_minus_enriched_depleted) + length(in_list$tree$tip.label)
+  nonsig_nodes_i <- which(in_list$tree$node.label %in% all_sig_nodes_minus_enriched_depleted) + length(in_list$tree$tip.label)
   
-  return(list(prepped_tree=tree_sig_subset, enriched=enriched_balances_i, depleted=depleted_balances_i, nonsig=nonsig_balances_i))
+  return(list(prepped_tree=tree_sig_subset, enriched=enriched_nodes_i, depleted=depleted_nodes_i, nonsig=nonsig_nodes_i))
 }
 
 #' @export

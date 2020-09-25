@@ -102,7 +102,7 @@ compute_tree_node_balances <- function(phylogeny, abun, min_num_tips, ncores=1, 
 
 
 #' @export
-balance_taxa_name <- function(lhs_features, rhs_features, taxa, threshold=0.75) {
+node_taxa <- function(lhs_features, rhs_features, taxa, threshold=0.75) {
   
   if(threshold <= 0.5 | threshold > 1) {
     stop("The set threshold needs to be > 0.5 and <= 1.")
