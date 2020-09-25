@@ -24,7 +24,7 @@ prep_tree_sig_nodes <- function(in_list, taxa_table) {
   sig_node_taxa <- list()
   
   for(node in all_sig_nodes) {
-    sig_node_taxa[[node]] <- balance_taxa_name(lhs_features = in_list$nodes_info$features[[node]]$lhs,
+    sig_node_taxa[[node]] <- node_taxa(lhs_features = in_list$nodes_info$features[[node]]$lhs,
                                                rhs_features = in_list$nodes_info$features[[node]]$rhs,
                                                taxa = taxa_table)
   }
