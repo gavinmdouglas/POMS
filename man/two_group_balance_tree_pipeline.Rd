@@ -8,7 +8,6 @@ two_group_balance_tree_pipeline(
   abun,
   func,
   phylogeny,
-  taxa,
   group1_samples,
   group2_samples,
   ncores = 1,
@@ -18,13 +17,13 @@ two_group_balance_tree_pipeline(
   min_num_tips = 10,
   min_func_instances = 10,
   min_func_prop = 0.001,
-  name_threshold = 0.9,
   balance_p_cutoff = 0.05,
   balance_correction = "BY",
   function_p_cutoff = 0.05,
   function_correction = "none",
  
     func_descrip_infile = "/home/gavin/projects/POMS/KEGG_mappings/prepped/KO_descrip_22Aug2019.tsv",
+  skip_node_dist = FALSE,
   verbose = FALSE
 )
 }

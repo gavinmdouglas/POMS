@@ -18,7 +18,6 @@ two_group_balance_tree_pipeline <- function(abun,
                                             min_num_tips=10,
                                             min_func_instances=10,
                                             min_func_prop=0.001,
-                                            name_threshold=0.9,
                                             balance_p_cutoff = 0.05,
                                             balance_correction = "BY",
                                             function_p_cutoff = 0.05,
@@ -32,7 +31,7 @@ two_group_balance_tree_pipeline <- function(abun,
                                               group1_samples=group1_samples, group2_samples=group2_samples,
                                               ncores=ncores, pseudocount=pseudocount, significant_nodes=significant_nodes,
                                               tested_balances=tested_balances, min_num_tips=min_num_tips, min_func_instances=min_func_instances,
-                                              min_func_prop=min_func_prop, name_threshold=name_threshold,
+                                              min_func_prop=min_func_prop,
                                               balance_p_cutoff=balance_p_cutoff, balance_correction=balance_correction,
                                               function_p_cutoff=function_p_cutoff, function_correction=function_correction,
                                               func_descrip_infile=func_descrip_infile, verbose=verbose)
@@ -210,7 +209,6 @@ check_two_group_balance_args <- function(abun,
                                          min_num_tips,
                                          min_func_instances,
                                          min_func_prop,
-                                         name_threshold,
                                          balance_p_cutoff,
                                          balance_correction,
                                          function_p_cutoff,
@@ -248,8 +246,7 @@ check_two_group_balance_args <- function(abun,
   if((min_func_prop < 0) || (min_func_prop > 1)) { stop("Stopping - the min_func_prop argument must be between 0 and 1.") }
   if((balance_p_cutoff < 0) || (balance_p_cutoff > 1)) { stop("Stopping - the balance_p_cutoff argument must be between 0 and 1.") }
   if((function_p_cutoff < 0) || (function_p_cutoff > 1)) { stop("Stopping - the function_p_cutoff argument must be between 0 and 1.") }
-  if((name_threshold < 0) || (name_threshold > 1)) { stop("Stopping - the name_threshold argument must be between 0 and 1.") }
-
+  
   if((min_func_instances < 0) || (min_func_instances > ncol(func))) { stop("Stopping - the min_func_instances argument must be between 0 and 1.") }
 
   if(! function_correction %in% p.adjust.methods) { stop("Stopping - function_correction argument needs to be found in p.adjust.methods.") }
@@ -262,7 +259,7 @@ check_two_group_balance_args <- function(abun,
   return(list(group1_samples=group1_samples, group2_samples=group2_samples,
               ncores=ncores, pseudocount=pseudocount, significant_nodes=significant_nodes,
               min_num_tips=min_num_tips, min_func_instances=min_func_instances,
-              min_func_prop=min_func_prop, name_threshold=name_threshold,
+              min_func_prop=min_func_prop,
               balance_p_cutoff=balance_p_cutoff, balance_correction=balance_correction,
               function_p_cutoff=function_p_cutoff, function_correction=function_correction,
               func_descrip_infile=func_descrip_infile, verbose=verbose))
@@ -336,7 +333,7 @@ summarize_node_enrichment <- function(enriched_funcs, sig_nodes, func_p_cutoff) 
 }
 
 
-
+#' @export
 POM_pseudo_null <- function(focal_node_balances,
                             num_sig_nodes,
                             abun,
@@ -347,27 +344,38 @@ POM_pseudo_null <- function(focal_node_balances,
                             group2_samples,
                             num_null_rep=1000) {
   
-  pseudo_null_output <- list()
+  pseudo_null_output <- mclapply(1:num_null_rep, function(x) {
+                                                      two_group_balance_tree_pipeline(abun = abun,
+                                                                                      func = func,
+                                                                                      phylogeny = phylogeny,
+                                                                                      group1_samples = group1_samples,
+                                                                                      group2_samples = group2_samples,
+                                                                                      ncores = 1,
+                                                                                      significant_nodes = sample(names(focal_node_balances), num_sig_nodes),
+                                                                                      tested_balances = focal_node_balances,
+                                                                                      skip_node_dist = TRUE)
+  }, mc.cores = ncores)
   
-  for(rep in 1:num_null_rep) {
-    
-    rep_rand_nodes <- sample(nodes_to_consider, num_sig_nodes)
-    
-    pseudo_null_output[[rep]] <- two_group_balance_tree_pipeline(abun = abun,
-                                                                 func = func,
-                                                                 phylogeny = phylogeny,
-                                                                 group1_samples = group1_samples,
-                                                                 group2_samples = group2_samples,
-                                                                 ncores = ncores,
-                                                                 significant_nodes = rep_rand_nodes,
-                                                                 tested_balances = focal_node_balances,
-                                                                 skip_node_dist = TRUE)
-  }
+  # for(rep in 1:num_null_rep) {
+  #   
+  #   rep_rand_nodes <- 
+  #   
+  #   pseudo_null_output[[rep]] <- two_group_balance_tree_pipeline(abun = abun,
+  #                                                                func = func,
+  #                                                                phylogeny = phylogeny,
+  #                                                                group1_samples = group1_samples,
+  #                                                                group2_samples = group2_samples,
+  #                                                                ncores = 1,
+  #                                                                significant_nodes = rep_rand_nodes,
+  #                                                                tested_balances = focal_node_balances,
+  #                                                                skip_node_dist = TRUE)
+  # }
   
   return(pseudo_null_output)
   
 }
 
+#' @export
 pseudo_null_pvalues <- function(funcs2test, pseudo_null_out, actual_df) {
   
   num_null_rep <- length(pseudo_null_out)
@@ -385,7 +393,9 @@ pseudo_null_pvalues <- function(funcs2test, pseudo_null_out, actual_df) {
     for(i in 1:num_null_rep) {
       
       pseudo_abs_enrich <- abs(pseudo_null_out[[i]]$df[func, "num_sig_nodes_pos_enrich"] - pseudo_null_out[[i]]$df[func, "num_sig_nodes_neg_enrich"])
-      
+    
+      if(is.na(pseudo_abs_enrich)) { pseudo_abs_enrich <- 0 }
+        
       if(pseudo_abs_enrich >= abs_enrich) {
         num_equal_or_greater = num_equal_or_greater + 1
       }
@@ -399,4 +409,19 @@ pseudo_null_pvalues <- function(funcs2test, pseudo_null_out, actual_df) {
   names(func_pseudo_pvalues) <- funcs2test
   
   return(func_pseudo_pvalues)
+}
+
+
+gene_pseudo_null_dist <- function(pseudo_null, gene) {
+  
+  gene_pseudo_null <- data.frame(pos_nodes=as.numeric(rep(NA, length(pseudo_null))),
+                                 neg_nodes=as.numeric(rep(NA, length(pseudo_null))))
+  
+  for(i in 1:length(pseudo_null)) {
+    gene_pseudo_null[i, ] <- as.numeric(pseudo_null[[i]]$df[gene, c("num_sig_nodes_pos_enrich", "num_sig_nodes_neg_enrich")])
+  }
+  
+  gene_pseudo_null$abs_enrich <- abs(gene_pseudo_null$pos_nodes - gene_pseudo_null$neg_nodes)
+  
+  return(gene_pseudo_null)
 }

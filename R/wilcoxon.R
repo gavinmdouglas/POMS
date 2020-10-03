@@ -68,20 +68,5 @@ pairwise_mean_direction_and_wilcoxon <- function(in_list, group1, group2, corr_m
   return(list(mean_direction=mean_direction, wilcox_raw_p=wilcox_raw_p, wilcox_corrected_p=wilcox_corrected_p, wilcox_output=wilcox_output))
 }
 
-#' @export
-wilcoxon_2group_pvalues <- function(intable, group1_samples, group2_samples) {
-  group1_intable <- intable[, group1_samples]
-  group2_intable <- intable[, group2_samples]
-  
-  group1_intable_relab <- data.frame(t(sweep(x = group1_intable, MARGIN = 2, STATS = colSums(group1_intable), FUN = '/')), check.names=FALSE)
-  group2_intable_relab <- data.frame(t(sweep(x = group2_intable, MARGIN = 2, STATS = colSums(group2_intable), FUN = '/')), check.names=FALSE)
-  
-  wilcoxon_p <- c()
-  
-  for(feature in colnames(group1_intable_relab)) {
-    wilcoxon_p <- c(wilcoxon_p, wilcox.test(group1_intable_relab[, feature], group2_intable_relab[, feature])$p.value)
-  }
-  
-  return(wilcoxon_p)
-}
+
 

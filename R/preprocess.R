@@ -13,10 +13,10 @@ filter_rare_table_cols <- function(in_tab, min_nonzero_count, min_nonzero_prop, 
 prep_tree_sig_nodes <- function(in_list, taxa_table) {
   
   all_sig_nodes <- c()
-  for(func in names(in_list$out_list$nodes)) {
+  for(func in names(in_list$out_list)) {
     all_sig_nodes <- c(all_sig_nodes,
-                       in_list$out_list$nodes[[func]]$positive_nodes,
-                       in_list$out_list$nodes[[func]]$negative_nodes)
+                       in_list$out_list[[func]]$positive_nodes,
+                       in_list$out_list[[func]]$negative_nodes)
   }
   
   all_sig_nodes <- all_sig_nodes[-which(duplicated(all_sig_nodes))]
@@ -24,8 +24,8 @@ prep_tree_sig_nodes <- function(in_list, taxa_table) {
   sig_node_taxa <- list()
   
   for(node in all_sig_nodes) {
-    sig_node_taxa[[node]] <- node_taxa(lhs_features = in_list$nodes_info$features[[node]]$lhs,
-                                               rhs_features = in_list$nodes_info$features[[node]]$rhs,
+    sig_node_taxa[[node]] <- node_taxa(lhs_features = in_list$balances_info$features[[node]]$lhs,
+                                               rhs_features = in_list$balances_info$features[[node]]$rhs,
                                                taxa = taxa_table)
   }
   
@@ -45,10 +45,10 @@ prep_tree_sig_nodes <- function(in_list, taxa_table) {
 prep_tree_nodes_func <- function(in_list, focal_func, taxa_table) {
   
   all_sig_nodes <- c()
-  for(func in names(in_list$out_list$nodes)) {
+  for(func in names(in_list$out_list)) {
     all_sig_nodes <- c(all_sig_nodes,
-                          in_list$out_list$nodes[[func]]$positive_nodes,
-                          in_list$out_list$nodes[[func]]$negative_nodes)
+                          in_list$out_list[[func]]$positive_nodes,
+                          in_list$out_list[[func]]$negative_nodes)
   }
   
   all_sig_nodes <- all_sig_nodes[-which(duplicated(all_sig_nodes))]
@@ -56,9 +56,9 @@ prep_tree_nodes_func <- function(in_list, focal_func, taxa_table) {
   sig_node_taxa <- list()
   
   for(node in all_sig_nodes) {
-    sig_node_taxa[[node]] <- node_taxa_name(lhs_features = in_list$nodes_info$features[[node]]$lhs,
-                                               rhs_features = in_list$nodes_info$features[[node]]$rhs,
-                                               taxa = taxa_table)
+    sig_node_taxa[[node]] <- node_taxa(lhs_features = in_list$balances_info$features[[node]]$lhs,
+                                       rhs_features = in_list$balances_info$features[[node]]$rhs,
+                                       taxa = taxa_table)
   }
   
   tree_sig_subset <- in_list$tree
@@ -140,29 +140,4 @@ subset_abun_table <- function(in_abun, col2keep) {
   }
   
   return(in_abun)
-}
-
-#' @export
-calc_func_abun <- function(in_abun, in_func, ncores=1) {
-  
-  out_df <- data.frame(matrix(NA, nrow=ncol(in_func), ncol=ncol(in_abun)))
-  colnames(out_df) <- colnames(in_abun)
-  rownames(out_df) <- colnames(in_func)
-  
-  # Check that all rows are found in function table.
-  if(length(which(! rownames(in_abun) %in% rownames(in_func))) > 0) {
-    stop("Stoppings - some rows in abundance table not found in function table.")
-  }
-  
-  in_func <- in_func[rownames(in_abun), ]
-  
-  out_sample_func_abun <- mclapply(colnames(in_abun), function(x) { return(colSums(in_abun[, x] * in_func)) }, mc.cores=ncores)
-  names(out_sample_func_abun) <- colnames(in_abun)
-  
-  for(sample in colnames(in_abun)) {
-    out_df[, sample] <- out_sample_func_abun[[sample]]
-  }
-  
-  return(out_df)
-  
 }

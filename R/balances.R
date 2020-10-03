@@ -111,7 +111,7 @@ node_taxa <- function(lhs_features, rhs_features, taxa, threshold=0.75) {
   taxon_lhs <- feature_consensus_taxon(taxa, lhs_features, threshold)
   taxon_rhs <- feature_consensus_taxon(taxa, rhs_features, threshold)
   
-  return(paste(taxon_lhs, taxon_rhs, sep="/"))
+  return(paste(taxon_lhs, taxon_rhs, sep=" / "))
 }
 
 feature_consensus_taxon <- function(taxa, features, threshold) {
@@ -125,7 +125,7 @@ feature_consensus_taxon <- function(taxa, features, threshold) {
     if(length(taxa_subset_table) == 0) { next }
     
     if((max(taxa_subset_table) / length(features)) >= threshold) {
-      return(paste(colnames(taxa_subset)[i], names(taxa_subset_table)[which(taxa_subset_table == max(taxa_subset_table))], sep="_"))
+      return(paste(names(taxa_subset_table)[which(taxa_subset_table == max(taxa_subset_table))], " ", "(", colnames(taxa_subset)[i], ")", sep=""))
     }
   }
   
@@ -169,6 +169,8 @@ lhs_rhs_asvs <- function(tree, node, get_node_index=FALSE) {
   if(get_node_index) {
     node <- which(tree$node.label == node) + length(tree$tip.label)
   }
+  
+  if(class(node) == "character") { stop("Node is a character and not numeric - set get_node_index=TRUE if you want to input node label rather than node number.") }
   
   node_children <- phangorn::Children(tree, node)
   
