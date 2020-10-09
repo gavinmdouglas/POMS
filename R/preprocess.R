@@ -1,7 +1,7 @@
 #' @export
 filter_rare_table_cols <- function(in_tab, min_nonzero_count, min_nonzero_prop, verbose=TRUE) {
   nonzero_counts <- colSums(in_tab > 0)
-  col2remove <- which((nonzero_counts < min_nonzero_count) | (nonzero_counts / ncol(in_tab) < min_nonzero_prop))
+  col2remove <- which((nonzero_counts < min_nonzero_count) | (nonzero_counts / nrow(in_tab) < min_nonzero_prop))
   if(length(col2remove) > 0) {
     if(verbose) { message(paste("Filtering", as.character(length(col2remove)), "rare functions from input function table.")) }
     in_tab <- in_tab[, -col2remove]

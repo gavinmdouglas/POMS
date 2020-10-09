@@ -367,18 +367,20 @@ compute_node_enrichments <- function(node_fishers_out, functions_to_include, p_c
     node_fishers_out[missing_genes, ] <- 0
   }
   
-  node_fishers_out$abs_enrich <- abs(node_fishers_out$pos_enrich - node_fishers_out$neg_enrich)
-  
-  return(node_fishers_out[functions_to_include, "abs_enrich", drop=FALSE])
+  return(node_fishers_out[functions_to_include, c("pos_enrich", "neg_enrich"), drop=FALSE])
   
 }
 
 #' @export
 random_nodes_enrichment <- function(possible_enrichments, num_sig_nodes) {
   
-  possible_enrichments <- possible_enrichments[sample(names(possible_enrichments), num_sig_nodes)]
+  observed_enrichments <- possible_enrichments[sample(names(possible_enrichments), num_sig_nodes)]
   
-  return(base::Reduce("+", possible_enrichments)$abs_enrich)
+  observed_enrichments <- base::Reduce("+", observed_enrichments)
+  
+  observed_enrichments$abs_enrich <- abs(observed_enrichments$pos_enrich - observed_enrichments$neg_enrich)
+  
+  return(observed_enrichments$abs_enrich)
   
 }
 
