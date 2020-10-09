@@ -79,7 +79,7 @@ prep_tree_nodes_func <- function(in_list, focal_func, taxa_table) {
   }
   
   all_sig_nodes <- c(enriched_nodes, depleted_nodes)
-  tested_nodes <- names(ERP002061_out$balances_info$balances)
+  tested_nodes <- names(in_list$balances_info$balances)
   
   sig_node_taxa <- list()
   
