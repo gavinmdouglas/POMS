@@ -1,10 +1,8 @@
 #' @export
 calc_node_and_func_stats <- function(POMS_out, group1_samples, group2_samples) {
   
-  pairwise_node_out <- pairwise_mean_direction_and_wilcoxon(POMS_out$balances_info$balances,
-                                                            group1_samples,
-                                                            group2_samples,
-                                                            skip_wilcoxon=FALSE)
+  pairwise_node_out <- POMS_out$balance_comparisons
+
   
   node_effect_size <- sapply(POMS_out$balances_info$balances,
                              function(x) {
