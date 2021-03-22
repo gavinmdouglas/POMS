@@ -23,7 +23,8 @@ two_group_balance_tree_pipeline(
   function_correction = "none",
  
     func_descrip_infile = "/home/gavin/projects/POMS/KEGG_mappings/prepped/KO_descrip_22Aug2019.tsv",
-  skip_node_dist = FALSE,
+  calc_node_dist = FALSE,
+  detailed_output = FALSE,
   verbose = FALSE
 )
 }
