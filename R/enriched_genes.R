@@ -1,25 +1,3 @@
-#' @export
-categorize_gene_families <- function(in_list, min_sig_balances=4, min_prop_enriched_balances=0.3, max_opposite_enriched=0.1) {
-  
-  in_list$df$prop_sig_balances_pos_enrich <- in_list$df$num_sig_balances_pos_enrich / in_list$df$num_sig_balances_present
-  
-  in_list$df$prop_sig_balances_neg_enrich <- in_list$df$num_sig_balances_neg_enrich / in_list$df$num_sig_balances_present
-  
-  
-  in_list_pos_func <- in_list$df[which((in_list$df$num_sig_balances_present >= min_sig_balances) & (in_list$df$prop_sig_balances_pos_enrich >= min_prop_enriched_balances) & (in_list$df$prop_sig_balances_neg_enrich <max_opposite_enriched)), ]
-  
-  in_list_neg_func <- in_list$df[which((in_list$df$num_sig_balances_present >= min_sig_balances) & (in_list$df$prop_sig_balances_neg_enrich >= min_prop_enriched_balances) & (in_list$df$prop_sig_balances_pos_enrich < max_opposite_enriched)), ]
-  
-  in_list_mixed_func <- in_list$df[which((in_list$df$num_sig_balances_present >= min_sig_balances) & (in_list$df$prop_sig_balances_neg_enrich > max_opposite_enriched) & (in_list$df$prop_sig_balances_pos_enrich > max_opposite_enriched)), ]
-  
-  in_list_nonsig_func <- in_list$df[which((in_list$df$num_sig_balances_present > 0) & (in_list$df$prop_sig_balances_neg_enrich == 0) & (in_list$df$prop_sig_balances_pos_enrich == 0)), ]
-  
-  in_list_other_func <- in_list$df[which(! in_list$df$func %in% c(in_list_pos_func$func, in_list_neg_func$func, in_list_mixed_func$func, in_list_nonsig_func$func)), ]
-  
-  return(list(pos=in_list_pos_func, neg=in_list_neg_func, mixed=in_list_mixed_func, nonsig=in_list_nonsig_func, other=in_list_other_func))
-}
-
-#' @export
 feature_sets_func_fisher <- function(in_func, feature_set1, feature_set2, pseudocount=NULL, multiple_test_corr="none") {
   
   in_func_set1 <- in_func[feature_set1, ]
@@ -64,7 +42,6 @@ feature_sets_func_fisher <- function(in_func, feature_set1, feature_set2, pseudo
   return(fisher_out)
 }
 
-#' @export
 node_func_fisher <- function(node, in_tree, in_func, higher_group, pseudocount=NULL, multiple_test_corr="none") {
   node_features <- lhs_rhs_asvs(in_tree, node, get_node_index=TRUE)
   if(higher_group == "group1") {
@@ -75,7 +52,6 @@ node_func_fisher <- function(node, in_tree, in_func, higher_group, pseudocount=N
   return(node_fisher_tests)
 }
 
-#' @export
 calc_OR <- function(exposed_pos, exposed_neg, control_pos, control_neg) {
   return((exposed_pos / exposed_neg) / (control_pos / control_neg))  
 }
