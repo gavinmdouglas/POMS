@@ -253,7 +253,7 @@ two_group_balance_tree_pipeline <- function(abun,
       results[["input_param"]] <- input_param
   }
   
-  return(out_list)
+  return(results)
 
 }
 
