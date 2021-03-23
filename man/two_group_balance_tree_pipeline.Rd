@@ -17,12 +17,14 @@ two_group_balance_tree_pipeline(
   min_num_tips = 10,
   min_func_instances = 10,
   min_func_prop = 0.001,
+  multinomial_min_sig = 5,
   balance_p_cutoff = 0.05,
-  balance_correction = "BY",
+  balance_correction = "none",
   function_p_cutoff = 0.05,
   function_correction = "none",
- 
-    func_descrip_infile = "/home/gavin/projects/POMS/KEGG_mappings/prepped/KO_descrip_22Aug2019.tsv",
+  func_descrip_infile = NULL,
+  run_multinomial_test = TRUE,
+  multinomial_correction = "BH",
   calc_node_dist = FALSE,
   detailed_output = FALSE,
   verbose = FALSE
