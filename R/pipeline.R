@@ -18,24 +18,42 @@ two_group_balance_tree_pipeline <- function(abun,
                                             min_num_tips=10,
                                             min_func_instances=10,
                                             min_func_prop=0.001,
+                                            multinomial_min_sig=5,
                                             balance_p_cutoff = 0.05,
-                                            balance_correction = "BY",
+                                            balance_correction = "none",
                                             function_p_cutoff = 0.05,
                                             function_correction = "none",
-                                            func_descrip_infile = "/home/gavin/projects/POMS/KEGG_mappings/prepped/KO_descrip_22Aug2019.tsv",
+                                            func_descrip_infile = NULL,
+                                            run_multinomial_test=TRUE,
+                                            multinomial_correction="BH",
                                             calc_node_dist=FALSE,
                                             detailed_output=FALSE,
                                             verbose=FALSE) {
   
   if(verbose) { message("Checking input arguments.") }
-  input_param <- check_two_group_balance_args(abun=abun, func=func, phylogeny=phylogeny,
-                                              group1_samples=group1_samples, group2_samples=group2_samples,
-                                              ncores=ncores, pseudocount=pseudocount, significant_nodes=significant_nodes,
-                                              tested_balances=tested_balances, min_num_tips=min_num_tips, min_func_instances=min_func_instances,
+  input_param <- check_two_group_balance_args(abun=abun,
+                                              func=func,
+                                              phylogeny=phylogeny,
+                                              group1_samples=group1_samples,
+                                              group2_samples=group2_samples,
+                                              ncores=ncores,
+                                              pseudocount=pseudocount,
+                                              significant_nodes=significant_nodes,
+                                              tested_balances=tested_balances,
+                                              min_num_tips=min_num_tips,
+                                              min_func_instances=min_func_instances,
                                               min_func_prop=min_func_prop,
-                                              balance_p_cutoff=balance_p_cutoff, balance_correction=balance_correction,
-                                              function_p_cutoff=function_p_cutoff, function_correction=function_correction,
-                                              func_descrip_infile=func_descrip_infile, verbose=verbose)
+                                              multinomial_min_sig=multinomial_min_sig,
+                                              balance_p_cutoff=balance_p_cutoff,
+                                              balance_correction=balance_correction,
+                                              function_p_cutoff=function_p_cutoff,
+                                              function_correction=function_correction,
+                                              func_descrip_infile=func_descrip_infile,
+                                              run_multinomial_test=run_multinomial_test,
+                                              multinomial_correction=multinomial_correction,
+                                              calc_node_dist,
+                                              detailed_output,
+                                              verbose=verbose)
   
   if(verbose) { message("Prepping input phylogeny.") }
   phylogeny <- prep_tree(phy=phylogeny, tips2keep=rownames(abun))
@@ -104,9 +122,6 @@ two_group_balance_tree_pipeline <- function(abun,
   func_summaries <- summarize_node_enrichment(all_balances_enriched_funcs, sig_nodes, function_p_cutoff)
   
   # Get single DF summarizing the key metrics and print this out.
-  func_descrip <- read.table(func_descrip_infile,
-                             header=FALSE, sep="\t", row.names=1, stringsAsFactors = FALSE, quote="")
-  
   all_func_id <- c()
   for(balance in names(all_balances_enriched_funcs)) {
     all_func_id <- c(all_func_id, rownames(all_balances_enriched_funcs[[balance]]))
@@ -115,27 +130,27 @@ two_group_balance_tree_pipeline <- function(abun,
   all_func_id <- all_func_id[-which(duplicated(all_func_id))]
   
   if(verbose) { message("Creating results dataframe.") }
-  summary_df <- data.frame(matrix(NA, nrow=length(all_func_id), ncol=8))
+
+  summary_df <- data.frame(matrix(NA, nrow=length(all_func_id), ncol=4))
   
   rownames(summary_df) <- all_func_id
   
-  colnames(summary_df) <- c("num_sig_nodes_nonenrich",
-                            "num_sig_nodes_pos_enrich",
-                            "num_sig_nodes_neg_enrich",
-                            "num_sig_nodes_not_present",
-                            "num_nonsig_nodes_nonenrich",
-                            "num_nonsig_nodes_enrich",
-                            "num_nonsig_nodes_not_present",
-                            "description")
+  colnames(summary_df) <- c("num_nodes_enriched",
+                            "num_sig_nodes_group1_enrich",
+                            "num_sig_nodes_group2_enrich",
+                            "num_nonsig_nodes_enrich")
   
   rownames(summary_df) <- all_func_id
-  summary_df$description <- func_descrip[rownames(summary_df), "V2"]
   
-  if( calc_node_dist) {
+  if(verbose) { message("Creating results dataframe.") }
+
+
+  if(calc_node_dist) {
+    
+    if(verbose) { message("Calculating inter-node distance") }    
+    
     phylogeny_node_dists <- dist.nodes(phylogeny)
     
-    summary_df$mean_internode_dist_present <- NA
-    summary_df$max_internode_dist_present <- NA
     summary_df$mean_internode_dist_neg_enrich <- NA
     summary_df$max_internode_dist_neg_enrich <- NA
     summary_df$mean_internode_dist_pos_enrich <- NA
@@ -143,11 +158,25 @@ two_group_balance_tree_pipeline <- function(abun,
     
   }
   
+  if(run_multinomial_test) {
+    
+    if(verbose) { message("Will run multinomial test on every function (that meets the multinomial_min_sig cut-off).") } 
+  
+    prop_sig_node_balances <- length(sig_nodes) / length(calculated_balances$balances)
+    
+    multinomial_exp_prop <- c(prop_sig_node_balances * 0.5, prop_sig_node_balances * 0.5, 1 - prop_sig_node_balances)
+    
+    names(multinomial_exp_prop) <- c("exp_sig_nodes_group1_enrich_prop", "exp_sig_nodes_group2_enrich_prop", "exp_nonsig_nodes_enrich_prop")
+    
+    summary_df$multinomial_p <- NA
+  }
+  
+  
   for(func_id in all_func_id) {
     
     summary_df[func_id, c("num_sig_nodes_nonenrich",
-                          "num_sig_nodes_pos_enrich",
-                          "num_sig_nodes_neg_enrich",
+                          "num_sig_nodes_group1_enrich",
+                          "num_sig_nodes_group2_enrich",
                           "num_sig_nodes_not_present",
                           "num_nonsig_nodes_nonenrich",
                           "num_nonsig_nodes_enrich",
@@ -169,41 +198,66 @@ two_group_balance_tree_pipeline <- function(abun,
       stop("Node categorized into at least 2 mutually exclusive groups.")
     }
     
+    if(run_multinomial_test) {
+     
+      observed_counts <- as.numeric(summary_df[func_id, c("num_sig_nodes_group1_enrich",
+                                                           "num_sig_nodes_group2_enrich",
+                                                           "num_nonsig_nodes_enrich")])
+
+       if(sum(observed_counts) >= multinomial_min_sig) {
+         summary_df[func_id, "multinomial_p"] <- xmulti(obs=observed_counts,
+                                                        expr=multinomial_exp_prop, detail=0)$pProb 
+       }
+      
+    }
+    
     if(calc_node_dist) {
       
-      summary_df[func_id, c("mean_internode_dist_present",
-                            "max_internode_dist_present",
-                            "mean_internode_dist_neg_enrich",
-                            "max_internode_dist_neg_enrich",
-                            "mean_internode_dist_pos_enrich",
-                            "max_internode_dist_pos_enrich")] <- c(internode_mean_max_dist(phy = phylogeny, dist_matrix = phylogeny_node_dists,
-                                                                                           node_labels = all_nodes_present),
-                                                                   internode_mean_max_dist(phy = phylogeny, dist_matrix = phylogeny_node_dists,
-                                                                                           node_labels = func_summaries[[func_id]]$negative_nodes),
-                                                                   internode_mean_max_dist(phy = phylogeny, dist_matrix = phylogeny_node_dists,
-                                                                                           node_labels = func_summaries[[func_id]]$positive_nodes))
+      summary_df[func_id, c("mean_internode_dist_group1_enrich",
+                            "max_internode_dist_group1_enrich",
+                            "mean_internode_dist_group2_enrich",
+                            "max_internode_dist_group2_enrich")] <- c(internode_mean_max_dist(phy = phylogeny, dist_matrix = phylogeny_node_dists,
+                                                                                              node_labels = func_summaries[[func_id]]$positive_nodes),
+                                                                      internode_mean_max_dist(phy = phylogeny, dist_matrix = phylogeny_node_dists,
+                                                                                              node_labels = func_summaries[[func_id]]$negative_nodes))
     }
     
   }
   
-  if(detailed_output) {
-    return(list(balances_info=calculated_balances,
-                sig_nodes=sig_nodes,
-                balance_comparisons=pairwise_node_out,
-                funcs_per_node=all_balances_enriched_funcs,
-                df=summary_df,
-                out_list=func_summaries,
-                tree=phylogeny,
-                input_param=input_param))
+    if((run_multinomial_test) && (multinomial_correction != "none")) {
+      summary_df$multinomial_corr <- p.adjust(summary_df$multinomial_p, multinomial_correction)
+    }
+  
+    if(! is.null(func_descrip_infile)) {
+    if(verbose) { message("Adding function descriptions to output.") }
+    func_descrip <- read.table(func_descrip_infile,
+                               header=FALSE, sep="\t", row.names=1, stringsAsFactors = FALSE, quote="")
+    summary_df$description <- func_descrip[rownames(summary_df), "V2"]
   } else {
-    return(list(balances_info=calculated_balances,
-                sig_nodes=sig_nodes,
-                df=summary_df))
+    if(verbose) { message("Function description mapfile not specified (func_descrip_infile argument), so no descriptions will be added.") }    
   }
   
+  results <- list(balances_info=calculated_balances,
+                  sig_nodes=sig_nodes,
+                  df=summary_df)
+  
+  if(run_multinomial_test) {
+    results[["multinomial_exp_prop"]] <- multinomial_exp_prop
+  }
+  
+  if(detailed_output) {
+      results[["balance_comparisons"]] <- pairwise_node_out
+      results[["funcs_per_node"]] <- all_balances_enriched_funcs
+      results[["out_list"]] <- func_summaries
+      results[["tree"]] <- phylogeny
+      results[["input_param"]] <- input_param
+  }
+  
+  return(out_list)
+
 }
 
-#' @export
+
 check_two_group_balance_args <- function(abun,
                                          func,
                                          phylogeny,
@@ -216,11 +270,16 @@ check_two_group_balance_args <- function(abun,
                                          min_num_tips,
                                          min_func_instances,
                                          min_func_prop,
+                                         multinomial_min_sig,
                                          balance_p_cutoff,
                                          balance_correction,
                                          function_p_cutoff,
                                          function_correction,
                                          func_descrip_infile,
+                                         run_multinomial_test,
+                                         multinomial_correction,
+                                         calc_node_dist,
+                                         detailed_output,
                                          verbose) {
 
   if(((is.null(significant_nodes)) && (! is.null(tested_balances))) || ((! is.null(significant_nodes)) && (is.null(tested_balances)))) {
@@ -235,19 +294,21 @@ check_two_group_balance_args <- function(abun,
 
   if(class(group1_samples) != "character") { stop("Stopping - argument group1_samples needs to be of the class character.") }
   if(class(group2_samples) != "character") { stop("Stopping - argument group2_samples needs to be of the class character.") }
-
   if(length(group1_samples) == 0) { stop("Stopping - argument group1_samples is of length 0.") }
   if(length(group2_samples) == 0) { stop("Stopping - argument group2_samples is of length 0.") }
-
   if(length(which(group1_samples %in% colnames(abun))) != length(group1_samples)) { stop("Stopping - not all group1_samples match columns of abun argument.") }
   if(length(which(group2_samples %in% colnames(abun))) != length(group2_samples)) { stop("Stopping - not all group2_samples match columns of abun argument.") }
-
+  if(length(which(group1_samples %in% group2_samples)) > 0) { stop("Stopping - at least one sample overlaps between group1 and group2.") }
+  
   if((class(ncores) != "integer") && (class(ncores) != "numeric")) { stop("Stopping - ncores argument needs to be of class numeric or integer.") }
   if(ncores <= 0) { stop("Stopping - ncores argument needs to be higher than 0.") }
 
   if((class(pseudocount) != "integer") && (class(pseudocount) != "numeric")) { stop("Stopping - pseudocount argument needs to be of class numeric or integer.") }
   if(pseudocount < 0) { stop("Stopping - pseudocount argument cannot be lower than 0.") }
 
+  if((class(multinomial_min_sig) != "integer") && (class(multinomial_min_sig) != "numeric")) { stop("Stopping - multinomial_min_sig argument needs to be of class numeric or integer.") }
+  if(multinomial_min_sig < 0) { stop("Stopping - multinomial_min_sig argument cannot be lower than 0.") }
+  
   if(min_num_tips > length(phylogeny$tip.label) / 2) { stop("Stopping - the min_num_tips argument cannot be higher than half of the total number of tips.") }
 
   if((min_func_prop < 0) || (min_func_prop > 1)) { stop("Stopping - the min_func_prop argument must be between 0 and 1.") }
@@ -258,9 +319,16 @@ check_two_group_balance_args <- function(abun,
 
   if(! function_correction %in% p.adjust.methods) { stop("Stopping - function_correction argument needs to be found in p.adjust.methods.") }
   if(! balance_correction %in% p.adjust.methods) { stop("Stopping - balance_correction argument needs to be found in p.adjust.methods.") }
+  if(! multinomial_correction %in% p.adjust.methods) { stop("Stopping - multinomial_correction argument needs to be found in p.adjust.methods.") }
+  
+  if(! is.null(func_descrip_infile) && (! file.exists(func_descrip_infile))) { stop("Stopping - func_descrip_infile is non-NULL, but the specified file was not found.") }
 
-  if(! file.exists(func_descrip_infile)) { stop("Stopping - file corresponding to func_descrip_infile argument not found.") }
-
+  if(! is.logical(run_multinomial_test)) { stop("Stopping - run_multinomial_test argument needs to be TRUE or FALSE.") }
+  
+  if(! is.logical(calc_node_dist)) { stop("Stopping - calc_node_dist argument needs to be TRUE or FALSE.") }
+  
+  if(! is.logical(detailed_output)) { stop("Stopping - detailed_output argument needs to be TRUE or FALSE.") }
+  
   if(! is.logical(verbose)) { stop("Stopping - verbose argument needs to be TRUE or FALSE.") }
 
   return(list(group1_samples=group1_samples,
@@ -271,11 +339,16 @@ check_two_group_balance_args <- function(abun,
               min_num_tips=min_num_tips,
               min_func_instances=min_func_instances,
               min_func_prop=min_func_prop,
+              multinomial_min_sig=multinomial_min_sig,
               balance_p_cutoff=balance_p_cutoff,
               balance_correction=balance_correction,
               function_p_cutoff=function_p_cutoff,
               function_correction=function_correction,
               func_descrip_infile=func_descrip_infile,
+              run_multinomial_test=run_multinomial_test,
+              multinomial_correction=multinomial_correction,
+              calc_node_dist=calc_node_dist,
+              detailed_output=detailed_output,
               verbose=verbose))
 }
 
