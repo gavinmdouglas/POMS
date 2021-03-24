@@ -160,7 +160,7 @@ POMS_pipeline <- function(abun,
   
   if(run_multinomial_test) {
     
-    if(verbose) { message("Will run multinomial test on every function (that meets the multinomial_min_sig cut-off).") } 
+    if(verbose) { message("Will run multinomial test on every function (that meet the multinomial_min_sig cut-off).") } 
   
     prop_sig_node_balances <- length(sig_nodes) / length(calculated_balances$balances)
     
@@ -174,20 +174,17 @@ POMS_pipeline <- function(abun,
   
   for(func_id in all_func_id) {
     
-    summary_df[func_id, c("num_sig_nodes_nonenrich",
-                          "num_sig_nodes_group1_enrich",
+    summary_df[func_id, c("num_sig_nodes_group1_enrich",
                           "num_sig_nodes_group2_enrich",
-                          "num_sig_nodes_not_present",
-                          "num_nonsig_nodes_nonenrich",
-                          "num_nonsig_nodes_enrich",
-                          "num_nonsig_nodes_not_present")] <- c(length(func_summaries[[func_id]]$nonenriched_sig_nodes),
-                                                                length(func_summaries[[func_id]]$positive_nodes),
-                                                                length(func_summaries[[func_id]]$negative_nodes),
-                                                                length(func_summaries[[func_id]]$missing_sig_nodes),
-                                                                length(func_summaries[[func_id]]$nonenriched_nonsig_nodes),
-                                                                length(func_summaries[[func_id]]$enriched_nonsig_nodes),
-                                                                length(func_summaries[[func_id]]$missing_nonsig_nodes))
+                          "num_nonsig_nodes_enrich")] <- c(length(func_summaries[[func_id]]$positive_nodes),
+                                                           length(func_summaries[[func_id]]$negative_nodes),
+                                                           length(func_summaries[[func_id]]$enriched_nonsig_nodes))
     
+    
+    summary_df[func_id, "num_nodes_enriched"] <- sum(as.numeric(summary_df[func_id, c("num_sig_nodes_group1_enrich",
+                                                                                      "num_sig_nodes_group2_enrich",
+                                                                                      "num_nonsig_nodes_enrich")]))
+        
     all_nodes_present <- c(func_summaries[[func_id]]$nonenriched_sig_nodes,
                            func_summaries[[func_id]]$positive_nodes,
                            func_summaries[[func_id]]$negative_nodes,
@@ -204,9 +201,9 @@ POMS_pipeline <- function(abun,
                                                            "num_sig_nodes_group2_enrich",
                                                            "num_nonsig_nodes_enrich")])
 
-       if(sum(observed_counts) >= multinomial_min_sig) {
-         summary_df[func_id, "multinomial_p"] <- xmulti(obs=observed_counts,
-                                                        expr=multinomial_exp_prop, detail=0)$pProb 
+      if((length(sig_nodes) > 0) && (summary_df[func_id, "num_nodes_enriched"] >= multinomial_min_sig)) {
+         summary_df[func_id, "multinomial_p"] <- XNomial::xmulti(obs=observed_counts,
+                                                                 expr=multinomial_exp_prop, detail=0)$pProb 
        }
       
     }
