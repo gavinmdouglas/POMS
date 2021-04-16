@@ -80,21 +80,23 @@ compute_tree_node_balances <- function(phylogeny, abun, min_num_tips, ncores=1, 
   
   if(length(nonnegligible_nodes_i) > 0) {
     nonnegligible_nodes <- names(node_features)[nonnegligible_nodes_i]
+    
+    # Calculate balances at each node.
+    balance_calc <- mclapply(nonnegligible_nodes,
+                             function(x) {
+                               return(calc_balances(abun_table=abun,
+                                                    lhs_features=node_features[[x]]$lhs,
+                                                    rhs_features=node_features[[x]]$rhs,
+                                                    pseudocount=pseudocount))
+                             },
+                             mc.cores=ncores)
+    
+    names(balance_calc) <- nonnegligible_nodes
+
   } else {
-    stop("Stopping - no non-negligible nodes remain after filtering based on mininum number of tips of left and right-hand side of each node.")
+    balance_calc <- NULL
+    message("Skipping balance calculation, because no non-negligible nodes remain after filtering based on mininum number of tips of left and right-hand side of each node.")
   }
-  
-  # Calculate balances at each node.
-  balance_calc <- mclapply(nonnegligible_nodes,
-                           function(x) {
-                             return(calc_balances(abun_table=abun,
-                                                  lhs_features=node_features[[x]]$lhs,
-                                                  rhs_features=node_features[[x]]$rhs,
-                                                  pseudocount=pseudocount))
-                           },
-                           mc.cores=ncores)
-  
-  names(balance_calc) <- nonnegligible_nodes
   
   return(list(features=node_features, balances=balance_calc, negligible_nodes=negligible_nodes))
   

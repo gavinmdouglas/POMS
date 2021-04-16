@@ -68,6 +68,11 @@ POMS_pipeline <- function(abun,
     
     calculated_balances <- compute_tree_node_balances(abun=abun, phylogeny=phylogeny, ncores=ncores, min_num_tips = min_num_tips)
     
+    if (length(calculated_balances$balances) == 0) {
+      message("Cannot run POMS workflow because no nodes are non-negligible based on specified settings.")
+      return(list(error = "Cannot run POMS workflow because no nodes are non-negligible based on specified settings."))
+    }
+    
     if(verbose) { message("Identified ", length(calculated_balances$balances), " of ", length(phylogeny$node.label), " nodes as non-negligible and will be used for analyses.") }
     
     if(verbose) { message("Running Wilcoxon tests to test for differences in balances between groups at each non-negligible node.") }
