@@ -127,7 +127,9 @@ POMS_pipeline <- function(abun,
     all_func_id <- c(all_func_id, rownames(all_balances_enriched_funcs[[balance]]))
   }
   
-  all_func_id <- all_func_id[-which(duplicated(all_func_id))]
+  if (length(which(duplicated(all_func_id))) > 0) {
+    all_func_id <- all_func_id[-which(duplicated(all_func_id))]
+  }
   
   if(verbose) { message("Creating results dataframe.") }
 
@@ -201,7 +203,7 @@ POMS_pipeline <- function(abun,
                                                            "num_sig_nodes_group2_enrich",
                                                            "num_nonsig_nodes_enrich")])
 
-      if((length(sig_nodes) > 0) && (summary_df[func_id, "num_nodes_enriched"] >= multinomial_min_sig)) {
+      if((length(sig_nodes) > 0) && (summary_df[func_id, "num_nodes_enriched"] >= multinomial_min_sig) && (prop_sig_node_balances != 1)) {
          summary_df[func_id, "multinomial_p"] <- XNomial::xmulti(obs=observed_counts,
                                                                  expr=multinomial_exp_prop, detail=0)$pProb 
        }
@@ -363,7 +365,9 @@ summarize_node_enrichment <- function(enriched_funcs, sig_nodes, func_p_cutoff) 
     all_func_id <- c(all_func_id, rownames(enriched_funcs[[node]]))
   }
 
-  all_func_id <- all_func_id[-which(duplicated(all_func_id))]
+  if (length(which(duplicated(all_func_id))) > 0) {
+    all_func_id <- all_func_id[-which(duplicated(all_func_id))]
+  }
 
   func_summaries <- list()
 
