@@ -6,7 +6,7 @@ The available POMS code is currently an **alpha release**, meaning that it is su
 
 ### Installation
 
-```
+```R
 library(devtools)
 install_github("gavinmdouglas/POMS", ref = "main")
 ```
@@ -17,7 +17,7 @@ The key POMS function is `POMS_pipeline`, which requires tables of taxa and func
 
 _Note: the options `min_num_tips`, `multinomial_min_sig`, and `min_func_instances` are set to non-default values to work with this small example, but normally you could leave them to be default._
 
-```
+```R
 setwd("path/to/POMS/example_files/")
 
 library(ape)
@@ -47,7 +47,7 @@ POMS_out <- POMS_pipeline(abun = ex_taxa_abun,
 
 The above usage example will produce a list called `POMS_out`. This can be a very large list full of intermediate objects when `detailed=TRUE`. However, most users will just be interested in the output results dataframe. Usually there will be many rows to this dataframe, but in this case there are only two because that's how many functions were tested. Accordinly, we can look at the transposed version of this dataframe to see it better.
 
-```
+```R
 t(POMS_out$df)
 
 #                             K07106 K02036
