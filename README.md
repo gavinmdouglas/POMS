@@ -20,8 +20,6 @@ _Note: the options `min_num_tips`, `multinomial_min_sig`, and `min_func_instance
 ```
 setwd("path/to/POMS/example_files/")
 
-devtools::load_all(path = "/home/gavin/github_repos/POMS/")
-
 library(ape)
 library(POMS)
 
