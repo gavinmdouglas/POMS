@@ -250,6 +250,9 @@ POMS_pipeline <- function(abun,
   }
   
   if(detailed_output) {
+      # Restrict vector of mean directions to significant nodes only to avoid confusion.
+      pairwise_node_out$mean_direction <- pairwise_node_out$mean_direction[sig_nodes]
+
       results[["balance_comparisons"]] <- pairwise_node_out
       results[["funcs_per_node"]] <- all_balances_enriched_funcs
       results[["out_list"]] <- func_summaries
