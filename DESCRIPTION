@@ -1,7 +1,7 @@
 Package: POMS
 Title: Phylogenetic Organization of Metagenome Signals
-Version: 0.0.1
-Authors@R: 
+Version: 1.0.0
+Authors@R:
     person(given = "Gavin",
            family = "Douglas",
            role = c("aut", "cre"),
