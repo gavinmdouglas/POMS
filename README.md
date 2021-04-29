@@ -45,7 +45,7 @@ POMS_out <- POMS_pipeline(abun = ex_taxa_abun,
 
 ### Example output
 
-The above usage example will produce a list called `POMS_out`. This can be a very large list full of intermediate objects when `detailed=TRUE`. However, most users will just be interested in the output results dataframe. Usually there will be many rows to this dataframe, but in this case there are only two because that's how many functions were tested. Accordinly, we can look at the transposed version of this dataframe to see it better.
+The above usage example will produce a list called `POMS_out`. This can be a very large list full of intermediate objects when `detailed=TRUE`. However, most users will just be interested in the output results dataframe. Usually there will be many rows to this dataframe, but in this case there are only two because that's how many functions were tested. Accordingly, we can look at the transposed version of this dataframe to see it better.
 
 ```R
 t(POMS_out$df)
