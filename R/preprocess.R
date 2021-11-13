@@ -149,7 +149,7 @@ prep_tree <- function(phy, tips2keep) {
   
   phy <- ape::drop.tip(phy = phy, tip = tips2remove)
   
-  if(! ape::is.binary.tree(phy)) {
+  if(! ape::is.binary(phy)) {
     stop("Tree is non-binary.")
   }
   
