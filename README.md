@@ -51,10 +51,10 @@ The above usage example will produce a list called `POMS_out`. This can be a ver
 t(POMS_out$df)
 
 #                             K07106 K02036
-# num_nodes_enriched               3 5.0000
+# num_nodes_enriched               4 5.0000
 # num_sig_nodes_group1_enrich      2 5.0000
 # num_sig_nodes_group2_enrich      1 0.0000
-# num_nonsig_nodes_enrich          0 0.0000
+# num_nonsig_nodes_enrich          1 0.0000
 # multinomial_p                    1 0.0272
 # multinomial_corr                 1 0.0544
 ```
