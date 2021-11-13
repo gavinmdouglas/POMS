@@ -1,4 +1,4 @@
-# Phylogenetic Organization of Metagenome Signals (POMS)
+# Phylogenetic Organization of Metagenomic Signals (POMS)
 
 This repository contains the code used for the joint taxa-function bioinformatics analysis tool described in Douglas et al. (_In Prep_).
 
