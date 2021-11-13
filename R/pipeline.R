@@ -167,7 +167,7 @@ POMS_pipeline <- function(abun,
   
   if(run_multinomial_test) {
     
-    if(verbose) { message("Will run multinomial test on every function (that meet the multinomial_min_sig cut-off).") } 
+    if(verbose) { message("Will run multinomial test on every function (that meets the multinomial_min_sig cut-off).") } 
   
     prop_sig_node_balances <- length(sig_nodes) / length(calculated_balances$balances)
     
