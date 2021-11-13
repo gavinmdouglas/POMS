@@ -5,13 +5,13 @@ feature_sets_func_fisher <- function(in_func, feature_set1, feature_set2, pseudo
   
   func_ids_all <- colnames(in_func)
   
-  set1_func_missing <- func_ids_all[which(colSums(in_func_set1[, func_ids_all]) == 0)]
-  set2_func_missing <- func_ids_all[which(colSums(in_func_set2[, func_ids_all]) == 0)]
+  set1_func_missing <- func_ids_all[which(colSums(in_func_set1[, func_ids_all, drop = FALSE]) == 0)]
+  set2_func_missing <- func_ids_all[which(colSums(in_func_set2[, func_ids_all, drop = FALSE]) == 0)]
   both_func_missing <- set1_func_missing[which(set1_func_missing %in% set2_func_missing)]
   
   if(length(both_func_missing) > 0) {
-    in_func_set1 <- in_func_set1[, -which(colnames(in_func_set1) %in% both_func_missing)]
-    in_func_set2 <- in_func_set2[, -which(colnames(in_func_set2) %in% both_func_missing)]
+    in_func_set1 <- in_func_set1[, -which(colnames(in_func_set1) %in% both_func_missing), drop = FALSE]
+    in_func_set2 <- in_func_set2[, -which(colnames(in_func_set2) %in% both_func_missing), drop = FALSE]
   }
   
   func_ids <- colnames(in_func_set1)
