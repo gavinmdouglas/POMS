@@ -1,7 +1,7 @@
 feature_sets_func_fisher <- function(in_func, feature_set1, feature_set2, pseudocount=NULL, multiple_test_corr="none") {
   
-  in_func_set1 <- in_func[feature_set1, ]
-  in_func_set2 <- in_func[feature_set2, ]
+  in_func_set1 <- in_func[feature_set1, , drop = FALSE]
+  in_func_set2 <- in_func[feature_set2, , drop = FALSE]
   
   func_ids_all <- colnames(in_func)
   
