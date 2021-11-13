@@ -109,7 +109,7 @@ POMS_pipeline <- function(abun,
   
   if(verbose) { message("Identifying enriched functions at all non-negligible nodes.") }
   
-  all_balances_enriched_funcs <- mclapply(names(calculated_balances$balances),
+  all_balances_enriched_funcs <- parallel::mclapply(names(calculated_balances$balances),
                                           function(x) {
                                             return(node_func_fisher(node = x,
                                                                     in_tree = phylogeny,

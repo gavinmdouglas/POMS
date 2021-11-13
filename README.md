@@ -30,7 +30,7 @@ ex_group1 <- read.table("ex_group1.txt.gz", stringsAsFactors = FALSE)$V1
 ex_group2 <- read.table("ex_group2.txt.gz", stringsAsFactors = FALSE)$V1
 
 
-# Example of how to run these 
+# Example of how to run main POMS function. 
 POMS_out <- POMS_pipeline(abun = ex_taxa_abun,
                           func = ex_func,
                           phylogeny = ex_tree,

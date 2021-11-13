@@ -82,7 +82,7 @@ compute_tree_node_balances <- function(phylogeny, abun, min_num_tips, ncores=1, 
     nonnegligible_nodes <- names(node_features)[nonnegligible_nodes_i]
     
     # Calculate balances at each node.
-    balance_calc <- mclapply(nonnegligible_nodes,
+    balance_calc <- parallel::mclapply(nonnegligible_nodes,
                              function(x) {
                                return(calc_balances(abun_table=abun,
                                                     lhs_features=node_features[[x]]$lhs,
