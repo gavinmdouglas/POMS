@@ -18,7 +18,7 @@ install_github("gavinmdouglas/POMS", ref = "main")
 
 The key POMS function is `POMS_pipeline`, which requires tables of taxa and function abundances, a tree of taxa, and sample names split into group1 and group2. The below code will run the pipeline on example input files that are part of this repository. These example files are highly simplified to run quickly - for instance, there are only two functions tested and only 60 tips in the tree.
 
-_Note: the options `min_num_tips`, `multinomial_min_sig`, and `min_func_instances` are set to non-default values to work with this small example, but normally you could leave them to be default._
+_Note: the options `min_num_tips`, `multinomial_min_FSNs`, and `min_func_instances` are set to non-default values to work with this small example, but normally you could leave them to be default._
 
 ```R
 setwd("path/to/POMS/example_files/")
@@ -41,7 +41,7 @@ POMS_out <- POMS_pipeline(abun = ex_taxa_abun,
                           group2_samples = ex_group2,
                           ncores = 1,
                           min_num_tips = 4,
-                          multinomial_min_sig = 3,
+                          multinomial_min_FSNs = 3,
                           min_func_instances = 0,
                           verbose = TRUE)
 ```

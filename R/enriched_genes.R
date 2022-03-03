@@ -42,19 +42,20 @@ feature_sets_func_fisher <- function(in_func, feature_set1, feature_set2, add_ps
   return(fisher_out)
 }
 
-node_func_fisher <- function(node, in_tree, in_func, higher_group, pseudocount=NULL, multiple_test_corr="none") {
+node_func_fisher <- function(node, in_tree, in_func, higher_group, add_pseudocount=FALSE, multiple_test_corr="none") {
   node_features <- lhs_rhs_asvs(in_tree, node, get_node_index=TRUE)
+  
   if(higher_group == "group1") {
     node_fisher_tests <- feature_sets_func_fisher(in_func = in_func,
                                                   feature_set1 = node_features$lhs,
                                                   feature_set2 = node_features$rhs,
-                                                  pseudocount=pseudocount,
+                                                  add_pseudocount=add_pseudocount,
                                                   multiple_test_corr=multiple_test_corr)
   } else if(higher_group == "group2") {
     node_fisher_tests <- feature_sets_func_fisher(in_func = in_func,
                                                   feature_set1 = node_features$rhs,
                                                   feature_set2 = node_features$lhs,
-                                                  pseudocount=pseudocount,
+                                                  add_pseudocount=add_pseudocount,
                                                   multiple_test_corr=multiple_test_corr)
   }
   return(node_fisher_tests)
