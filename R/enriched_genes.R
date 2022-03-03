@@ -1,4 +1,4 @@
-feature_sets_func_fisher <- function(in_func, feature_set1, feature_set2, pseudocount=NULL, multiple_test_corr="none") {
+feature_sets_func_fisher <- function(in_func, feature_set1, feature_set2, add_pseudocount=FALSE, multiple_test_corr="none") {
   
   in_func_set1 <- in_func[feature_set1, , drop = FALSE]
   in_func_set2 <- in_func[feature_set2, , drop = FALSE]
@@ -21,14 +21,14 @@ feature_sets_func_fisher <- function(in_func, feature_set1, feature_set2, pseudo
   
   rownames(fisher_out) <- func_ids
   
-  for(func in func_ids) {
+  for (func in func_ids) {
     
     func_count_matrix <- matrix(c(length(which(in_func_set1[, func] > 0)), length(which(in_func_set1[, func] == 0)),
                                   length(which(in_func_set2[, func] > 0)), length(which(in_func_set2[, func] == 0))),
                                 nrow=2, ncol=2)
     
-    if(pseudocount) {
-      func_count_matrix <- func_count_matrix + pseudocount
+    if (add_pseudocount) {
+      func_count_matrix <- func_count_matrix + 1
     }
     
     func_count_fisher <- fisher.test(round(func_count_matrix))
@@ -45,9 +45,17 @@ feature_sets_func_fisher <- function(in_func, feature_set1, feature_set2, pseudo
 node_func_fisher <- function(node, in_tree, in_func, higher_group, pseudocount=NULL, multiple_test_corr="none") {
   node_features <- lhs_rhs_asvs(in_tree, node, get_node_index=TRUE)
   if(higher_group == "group1") {
-    node_fisher_tests <- feature_sets_func_fisher(in_func = in_func, feature_set1 = node_features$lhs, feature_set2 = node_features$rhs, pseudocount=pseudocount, multiple_test_corr=multiple_test_corr)
+    node_fisher_tests <- feature_sets_func_fisher(in_func = in_func,
+                                                  feature_set1 = node_features$lhs,
+                                                  feature_set2 = node_features$rhs,
+                                                  pseudocount=pseudocount,
+                                                  multiple_test_corr=multiple_test_corr)
   } else if(higher_group == "group2") {
-    node_fisher_tests <- feature_sets_func_fisher(in_func = in_func, feature_set1 = node_features$rhs, feature_set2 = node_features$lhs, pseudocount=pseudocount, multiple_test_corr=multiple_test_corr)
+    node_fisher_tests <- feature_sets_func_fisher(in_func = in_func,
+                                                  feature_set1 = node_features$rhs,
+                                                  feature_set2 = node_features$lhs,
+                                                  pseudocount=pseudocount,
+                                                  multiple_test_corr=multiple_test_corr)
   }
   return(node_fisher_tests)
 }

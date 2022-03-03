@@ -1,28 +1,109 @@
 #' Two-group POMS pipeline
 #'
-#' This function will identify significant nodes based on Wilcoxon tests
-#' and then identify enriched functions.
+#' Key function to run POMS pipeline.\cr
+#' 
+#' This function will identify significant nodes based on sample balances using a Wilcoxon test by default, or significant nodes can be specified.
+#' Significant nodes are referred to as Balance-Significant Nodes (BSNs).\cr
+#' 
+#' Fisher's exact tests are run at each node in the tree with sufficient numbers of underlying tips on each side.
+#' Significant nodes based on this test are referred to as Function-Significant Nodes (FSNs).\cr
+#' 
+#' The key output is the tally of the intersecting nodes based on the sets of BSNs and FSNs.\cr
+#' 
+#' Each FSN can be categorized in one of three ways:\cr
+#' (1) It does not intersect with any BSN.\cr
+#' (2) It intersects with a BSN and the functional enrichment is within the taxa that are relatively more abundant in group 1 samples.\cr
+#' (3) Same as #2, but enriched within taxa that are relatively more abundant in group 2 samples.\cr
+#' 
+#' A multinomial test is run to see if the tallies the FSNs in these three categories is significantly different from the random expectation.
 #'
-#' @param abun Dataframe of MAG or ASV abundances
-#' @return A matrix of the infile
+#' @param abun Dataframe of abundances of taxa which are at the tips of the input phylogeny, which would usually be individual genomes.
+#' The taxa should be the rows and the samples the columns.
+#' 
+#' @param func Dataframe of the number of copies of each function that are encoded by each input taxon.
+#' This pipeline only considers the presence/absence of functions across taxa.
+#' Taxa (with rownames intersecting with the "abun" table) should be the rows and the functions should be the columns.
+#' 
+#' @param phylogeny Phylo object with tip labels that match the rownames of the "abun" and "func" tables.
+#' This object is usually a newick tree that has been read into R with the ape R package.
+#' 
+#' @param group1_samples Character vector of column names of "abun" table that correspond to the first sample group.
+#' This grouping is used for testing for significant sample balances at each node.
+#' 
+#' @param group2_samples Same as "group1_samples", but corresponding to the second sample group.
+#' 
+#' @param ncores Integer specifying how many cores to run sections of pipeline that are parallelized.
+#'
+#' @param pseudocount Number added to all cells of "abun" table to avoid 0 values.
+#' Set this to be 0 if this is not desired, although there will be issues with the balance tree approach if any 0's are present.
+#'
+#' @param significant_nodes Optional vector of node names that match node labels of input phylogeny.
+#' These nodes will be considered the significant balance tree set, and the Wilcoxon tests will not be run.
+#' The group means of the balances at each node will still be used to determine which group has higher values.
+#' Note this requires that "tested_nodes" is also specified.
+#' 
+#' @param tested_nodes Optional vector of node names which represent all tested nodes that resulted in the input to the significant_nodes vector.
+#' I.e., this vector must include all names in the significant_nodes vector, but also all non-significant tested nodes as well.
+#' 
+#' @param min_num_tips The minimum number of tips on each side of a node that is required that node to be retained for the analysis.
+#' Ignored if significant nodes are specified manually.
+#' 
+#' @param min_func_instances The minimum number of taxa that must encode the function for it to be retained for the analysis.
+#'
+#' @param min_func_prop The minimum proportion of taxa that must encode the function for it to be retained for the analysis.
+#' 
+#' @param multinomial_min_FSNs The minimum number of FSNs required to run a multinomial test for a given function.
+
+#' @param BSN_p_cutoff Significance cut-off for identifying BSNs.
+#' 
+#' @param BSN_correction Multiple-test correction to use on Wilcoxon test p-values when identifying BSNs.
+#' Must be a p.adjust option.
+#' 
+#' @param FSN_p_cutoff Significance cut-off for identifying FSNs.
+#' 
+#' @param FSN_correction Multiple-test correction to use on Fisher's exact test p-values when identifying FSNs.
+#' Must be a p.adjust option.
+#' 
+#' @param func_descrip_infile Optional path to mapfile of function ids (column 1) to descriptions (column 2).
+#' This should be tab-delimited with no header and one function per line.
+#' If this option is specified then an additional description column will be added to the output table.
+#' 
+#' @param run_multinomial_test Boolean flag for whether multinomial tests should be run.
+#' 
+#' @param multinomial_correction Multiple-test correction to use on raw multinomial test p-values.
+#' Must be a p.adjust option.
+#' 
+#' @param calc_node_dist Experimental feature that has not been validated.
+#' Boolean flag for whether internode distances should be computed between significant BSNs.
+#' 
+#' @param detailed_output Boolean flag to indicate that several intermediate objects should be included in the final output.
+#' This is useful when troubleshooting issues, but is not expected to be useful for most users.
+#'
+#' @param verbose Boolean flag to indicate that log information should be written to the console, to help keep track of the pipeline's progress.
+#' 
+#' @return A list containing at minimum three elements:\cr\cr
+#' "summary_df" - a dataframe with each tested function as a row and the numbers of FSNs of each type as columns, as well as the multinomial test output.\cr\cr
+#' "balances_info" - a list of the sample balances at each node.\cr\cr
+#' "sig_nodes" - the labels of BSNs.\cr\cr
+#' 
 #' @export
 POMS_pipeline <- function(abun,
                           func,
                           phylogeny,
-                          group1_samples,
-                          group2_samples,
+                          group1_samples=NULL,
+                          group2_samples=NULL,
                           ncores=1,
                           pseudocount=1,
                           significant_nodes=NULL,
-                          tested_balances=NULL,
+                          tested_nodes=NULL,
                           min_num_tips=10,
                           min_func_instances=10,
                           min_func_prop=0.001,
-                          multinomial_min_sig=5,
-                          balance_p_cutoff = 0.05,
-                          balance_correction = "none",
-                          function_p_cutoff = 0.05,
-                          function_correction = "none",
+                          multinomial_min_FSNs=5,
+                          BSN_p_cutoff = 0.05,
+                          BSN_correction = "none",
+                          FSN_p_cutoff = 0.05,
+                          FSN_correction = "none",
                           func_descrip_infile = NULL,
                           run_multinomial_test=TRUE,
                           multinomial_correction="BH",
@@ -39,15 +120,15 @@ POMS_pipeline <- function(abun,
                                           ncores=ncores,
                                           pseudocount=pseudocount,
                                           significant_nodes=significant_nodes,
-                                          tested_balances=tested_balances,
+                                          tested_nodes=tested_nodes,
                                           min_num_tips=min_num_tips,
                                           min_func_instances=min_func_instances,
                                           min_func_prop=min_func_prop,
-                                          multinomial_min_sig=multinomial_min_sig,
-                                          balance_p_cutoff=balance_p_cutoff,
-                                          balance_correction=balance_correction,
-                                          function_p_cutoff=function_p_cutoff,
-                                          function_correction=function_correction,
+                                          multinomial_min_FSNs=multinomial_min_FSNs,
+                                          BSN_p_cutoff=BSN_p_cutoff,
+                                          BSN_correction=BSN_correction,
+                                          FSN_p_cutoff=FSN_p_cutoff,
+                                          FSN_correction=FSN_correction,
                                           func_descrip_infile=func_descrip_infile,
                                           run_multinomial_test=run_multinomial_test,
                                           multinomial_correction=multinomial_correction,
@@ -66,7 +147,11 @@ POMS_pipeline <- function(abun,
     
     if(verbose) { message("Calculating balances.") }
     
-    calculated_balances <- compute_tree_node_balances(abun=abun, phylogeny=phylogeny, ncores=ncores, min_num_tips = min_num_tips)
+    calculated_balances <- compute_tree_node_balances(abun=abun,
+                                                      phylogeny=phylogeny,
+                                                      ncores=ncores,
+                                                      min_num_tips = min_num_tips,
+                                                      pseudocount=pseudocount)
     
     if (length(calculated_balances$balances) == 0) {
       message("Cannot run POMS workflow because no nodes are non-negligible based on specified settings.")
@@ -77,9 +162,13 @@ POMS_pipeline <- function(abun,
     
     if(verbose) { message("Running Wilcoxon tests to test for differences in balances between groups at each non-negligible node.") }
     
-    pairwise_node_out <- pairwise_mean_direction_and_wilcoxon(calculated_balances$balances, group1_samples, group2_samples, corr_method=balance_correction, skip_wilcoxon=FALSE)
+    pairwise_node_out <- pairwise_mean_direction_and_wilcoxon(calculated_balances$balances,
+                                                              group1_samples,
+                                                              group2_samples,
+                                                              corr_method=BSN_correction,
+                                                              skip_wilcoxon=FALSE)
     
-    sig_nodes <- names(calculated_balances$balances)[which(pairwise_node_out$wilcox_corrected_p < balance_p_cutoff)]
+    sig_nodes <- names(calculated_balances$balances)[which(pairwise_node_out$wilcox_corrected_p < BSN_p_cutoff)]
     
   } else {
     
@@ -88,23 +177,26 @@ POMS_pipeline <- function(abun,
     if(any(! sig_nodes %in% phylogeny$node.label)) { stop("Not all sig. nodes are not found in phylogeny.")}
     
     calculated_balances <- list()
-    calculated_balances$balances <- tested_balances
-    calculated_balances$features <- parallel::mclapply(names(tested_balances),
+    calculated_balances$balances <- tested_nodes
+    calculated_balances$features <- parallel::mclapply(names(tested_nodes),
                                                        lhs_rhs_asvs,
                                                        tree=phylogeny,
                                                        get_node_index=TRUE,
                                                        mc.cores=ncores)
     
-    names(calculated_balances$features) <- names(tested_balances)
+    names(calculated_balances$features) <- names(tested_nodes)
     
-    negligible_nodes_i <- which(! names(phylogeny$node.label) %in% names(tested_balances))
+    negligible_nodes_i <- which(! names(phylogeny$node.label) %in% names(tested_nodes))
     if(length(negligible_nodes_i) > 0) {
       calculated_balances$negligible_nodes <- phylogeny$node.label[negligible_nodes_i]
     } else {
       calculated_balances$negligible_nodes <- c()
     }
     
-    pairwise_node_out <- pairwise_mean_direction_and_wilcoxon(calculated_balances$balances, group1_samples, group2_samples, skip_wilcoxon=TRUE)
+    pairwise_node_out <- pairwise_mean_direction_and_wilcoxon(calculated_balances$balances,
+                                                              group1_samples,
+                                                              group2_samples,
+                                                              skip_wilcoxon=TRUE)
   }
   
   if(verbose) { message("Identifying enriched functions at all non-negligible nodes.") }
@@ -115,8 +207,8 @@ POMS_pipeline <- function(abun,
                                                                     in_tree = phylogeny,
                                                                     in_func = func,
                                                                     higher_group=pairwise_node_out$mean_direction[x],
-                                                                    pseudocount=1,
-                                                                    multiple_test_corr=function_correction))
+                                                                    pseudocount=TRUE,
+                                                                    multiple_test_corr=FSN_correction))
                                           },
                                           mc.cores = ncores)
   
@@ -124,7 +216,7 @@ POMS_pipeline <- function(abun,
   
   if(verbose) { message("Summarizing significant functions across nodes.") }
   
-  func_summaries <- summarize_node_enrichment(all_balances_enriched_funcs, sig_nodes, function_p_cutoff)
+  func_summaries <- summarize_node_enrichment(all_balances_enriched_funcs, sig_nodes, FSN_p_cutoff)
   
   # Get single DF summarizing the key metrics and print this out.
   all_func_id <- c()
@@ -151,7 +243,6 @@ POMS_pipeline <- function(abun,
   
   if(verbose) { message("Creating results dataframe.") }
 
-
   if(calc_node_dist) {
     
     if(verbose) { message("Calculating inter-node distance") }    
@@ -167,7 +258,7 @@ POMS_pipeline <- function(abun,
   
   if(run_multinomial_test) {
     
-    if(verbose) { message("Will run multinomial test on every function (that meets the multinomial_min_sig cut-off).") } 
+    if(verbose) { message("Will run multinomial test on every function (that meets the multinomial_min_FSNs cut-off).") } 
   
     prop_sig_node_balances <- length(sig_nodes) / length(calculated_balances$balances)
     
@@ -208,7 +299,7 @@ POMS_pipeline <- function(abun,
                                                            "num_sig_nodes_group2_enrich",
                                                            "num_nonsig_nodes_enrich")])
 
-      if((length(sig_nodes) > 0) && (summary_df[func_id, "num_nodes_enriched"] >= multinomial_min_sig) && (prop_sig_node_balances != 1)) {
+      if((length(sig_nodes) > 0) && (summary_df[func_id, "num_nodes_enriched"] >= multinomial_min_FSNs) && (prop_sig_node_balances != 1)) {
          summary_df[func_id, "multinomial_p"] <- XNomial::xmulti(obs=observed_counts,
                                                                  expr=multinomial_exp_prop, detail=0)$pProb 
        }
@@ -273,15 +364,15 @@ check_POMS_pipeline_args <- function(abun,
                                      ncores,
                                      pseudocount,
                                      significant_nodes,
-                                     tested_balances,
+                                     tested_nodes,
                                      min_num_tips,
                                      min_func_instances,
                                      min_func_prop,
-                                     multinomial_min_sig,
-                                     balance_p_cutoff,
-                                     balance_correction,
-                                     function_p_cutoff,
-                                     function_correction,
+                                     multinomial_min_FSNs,
+                                     BSN_p_cutoff,
+                                     BSN_correction,
+                                     FSN_p_cutoff,
+                                     FSN_correction,
                                      func_descrip_infile,
                                      run_multinomial_test,
                                      multinomial_correction,
@@ -289,12 +380,18 @@ check_POMS_pipeline_args <- function(abun,
                                      detailed_output,
                                      verbose) {
 
-  if(((is.null(significant_nodes)) && (! is.null(tested_balances))) || ((! is.null(significant_nodes)) && (is.null(tested_balances)))) {
-    stop("Stopping - arguments significant_nodes and tested_balances either both need to be given or neither should be specified.")
+  if(((is.null(significant_nodes)) && (! is.null(tested_nodes))) || ((! is.null(significant_nodes)) && (is.null(tested_nodes)))) {
+    stop("Stopping - arguments significant_nodes and tested_nodes either both need to be given or neither should be specified.")
   }
 
   if((! is.null(significant_nodes)) && (length(significant_nodes) == 0)) { stop("Stopping - vector specified for significant_nodes argument is empty.") }
 
+  if ((! is.null(significant_nodes)) && (! is.null(tested_nodes))) {
+    if (length(which(significant_nodes %in% tested_nodes)) != length(significant_nodes)) {
+      stop("Stopping - not all nodes in significant_nodes vector are in in tested_nodes") 
+    }
+  }
+  
   if(class(abun) != "data.frame") { stop("Stopping - argument abun needs to be of the class data.frame.") }
   if(class(func) != "data.frame") { stop("Stopping - argument func needs to be of the class data.frame.") }
   if(class(phylogeny) != "phylo") { stop("Stopping - argument phylo needs to be of the class phylo.") }
@@ -313,19 +410,19 @@ check_POMS_pipeline_args <- function(abun,
   if((class(pseudocount) != "integer") && (class(pseudocount) != "numeric")) { stop("Stopping - pseudocount argument needs to be of class numeric or integer.") }
   if(pseudocount < 0) { stop("Stopping - pseudocount argument cannot be lower than 0.") }
 
-  if((class(multinomial_min_sig) != "integer") && (class(multinomial_min_sig) != "numeric")) { stop("Stopping - multinomial_min_sig argument needs to be of class numeric or integer.") }
-  if(multinomial_min_sig < 0) { stop("Stopping - multinomial_min_sig argument cannot be lower than 0.") }
+  if((class(multinomial_min_FSNs) != "integer") && (class(multinomial_min_FSNs) != "numeric")) { stop("Stopping - multinomial_min_FSNs argument needs to be of class numeric or integer.") }
+  if(multinomial_min_FSNs < 0) { stop("Stopping - multinomial_min_FSNs argument cannot be lower than 0.") }
   
   if(min_num_tips > length(phylogeny$tip.label) / 2) { stop("Stopping - the min_num_tips argument cannot be higher than half of the total number of tips.") }
 
   if((min_func_prop < 0) || (min_func_prop > 1)) { stop("Stopping - the min_func_prop argument must be between 0 and 1.") }
-  if((balance_p_cutoff < 0) || (balance_p_cutoff > 1)) { stop("Stopping - the balance_p_cutoff argument must be between 0 and 1.") }
-  if((function_p_cutoff < 0) || (function_p_cutoff > 1)) { stop("Stopping - the function_p_cutoff argument must be between 0 and 1.") }
+  if((BSN_p_cutoff < 0) || (BSN_p_cutoff > 1)) { stop("Stopping - the BSN_p_cutoff argument must be between 0 and 1.") }
+  if((FSN_p_cutoff < 0) || (FSN_p_cutoff > 1)) { stop("Stopping - the FSN_p_cutoff argument must be between 0 and 1.") }
   
   if((min_func_instances < 0) || (min_func_instances > ncol(func))) { stop("Stopping - the min_func_instances argument must be between 0 and 1.") }
 
-  if(! function_correction %in% p.adjust.methods) { stop("Stopping - function_correction argument needs to be found in p.adjust.methods.") }
-  if(! balance_correction %in% p.adjust.methods) { stop("Stopping - balance_correction argument needs to be found in p.adjust.methods.") }
+  if(! FSN_correction %in% p.adjust.methods) { stop("Stopping - FSN_correction argument needs to be found in p.adjust.methods.") }
+  if(! BSN_correction %in% p.adjust.methods) { stop("Stopping - BSN_correction argument needs to be found in p.adjust.methods.") }
   if(! multinomial_correction %in% p.adjust.methods) { stop("Stopping - multinomial_correction argument needs to be found in p.adjust.methods.") }
   
   if(! is.null(func_descrip_infile) && (! file.exists(func_descrip_infile))) { stop("Stopping - func_descrip_infile is non-NULL, but the specified file was not found.") }
@@ -346,11 +443,11 @@ check_POMS_pipeline_args <- function(abun,
               min_num_tips=min_num_tips,
               min_func_instances=min_func_instances,
               min_func_prop=min_func_prop,
-              multinomial_min_sig=multinomial_min_sig,
-              balance_p_cutoff=balance_p_cutoff,
-              balance_correction=balance_correction,
-              function_p_cutoff=function_p_cutoff,
-              function_correction=function_correction,
+              multinomial_min_FSNs=multinomial_min_FSNs,
+              BSN_p_cutoff=BSN_p_cutoff,
+              BSN_correction=BSN_correction,
+              FSN_p_cutoff=FSN_p_cutoff,
+              FSN_correction=FSN_correction,
               func_descrip_infile=func_descrip_infile,
               run_multinomial_test=run_multinomial_test,
               multinomial_correction=multinomial_correction,

@@ -16,7 +16,7 @@ License: `use_gpl3_license()`
 Encoding: UTF-8
 LazyData: true
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.1.1
+RoxygenNote: 7.1.2
 Imports:
     ape (>= 3.0),
     parallel (>= 3.3.0),
