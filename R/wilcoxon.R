@@ -1,4 +1,4 @@
-#' @export
+
 pairwise_mean_direction_and_wilcoxon <- function(in_list, group1, group2, corr_method="BH", ncores=1, skip_wilcoxon=FALSE) {
   
   wilcox_corrected_p <- NULL

@@ -116,6 +116,7 @@ node_taxa <- function(lhs_features, rhs_features, taxa, threshold=0.75) {
   return(paste(taxon_lhs, taxon_rhs, sep=" / "))
 }
 
+
 feature_consensus_taxon <- function(taxa, features, threshold) {
   
   taxa_subset <- taxa[features, ]
@@ -134,38 +135,7 @@ feature_consensus_taxon <- function(taxa, features, threshold) {
   return("Unclear")
 }
 
-#' @export
-internode_mean_max_dist <- function(phy, dist_matrix, node_labels) {
-  
-  # If fewer than 2 nodes in set then return NA.
-  if(length(node_labels) <= 1) {
-    missing_val <- c(NA, NA)
-    names(missing_val) <- c("mean", "max")
-    return(missing_val)
-  }
-  
-  nodes_i <- which(phy$node.label %in% node_labels) + length(phy$tip.label)
-  
-  if(length(nodes_i) != length(node_labels)) {
-    stop(paste("Wrong number of node labels match input set. Looking for ",
-               paste(node_labels, collapse = ", "),
-               " and found indices ",
-               paste(as.character(nodes_i), collapse=", "),
-               ".",
-               sep=""))
-  }
-  
-  dist_matrix_subset <- as.dist(dist_matrix[nodes_i, nodes_i])
-  
-  internode_dist_metrics <- c(mean(dist_matrix_subset), max(dist_matrix_subset))
-  names(internode_dist_metrics) <- c("mean", "max")
-  
-  return(internode_dist_metrics)
-  
-}
 
-
-#' @export
 lhs_rhs_asvs <- function(tree, node, get_node_index=FALSE) {
   
   if(get_node_index) {
