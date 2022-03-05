@@ -72,10 +72,7 @@
 #' 
 #' @param multinomial_correction Multiple-test correction to use on raw multinomial test p-values.
 #' Must be a p.adjust option.
-#' 
-#' @param calc_node_dist Experimental feature that has not been validated.
-#' Boolean flag for whether internode distances should be computed between significant BSNs.
-#' 
+#'  
 #' @param detailed_output Boolean flag to indicate that several intermediate objects should be included in the final output.
 #' This is useful when troubleshooting issues, but is not expected to be useful for most users.
 #'
@@ -107,7 +104,6 @@ POMS_pipeline <- function(abun,
                           func_descrip_infile = NULL,
                           run_multinomial_test=TRUE,
                           multinomial_correction="BH",
-                          calc_node_dist=FALSE,
                           detailed_output=FALSE,
                           verbose=FALSE) {
   
@@ -132,8 +128,7 @@ POMS_pipeline <- function(abun,
                                           func_descrip_infile=func_descrip_infile,
                                           run_multinomial_test=run_multinomial_test,
                                           multinomial_correction=multinomial_correction,
-                                          calc_node_dist,
-                                          detailed_output,
+                                          detailed_output=detailed_output,
                                           verbose=verbose)
   
   if(verbose) { message("Prepping input phylogeny.") }
@@ -242,20 +237,7 @@ POMS_pipeline <- function(abun,
   rownames(summary_df) <- all_func_id
   
   if(verbose) { message("Creating results dataframe.") }
-
-  if(calc_node_dist) {
-    
-    if(verbose) { message("Calculating inter-node distance") }    
-    
-    phylogeny_node_dists <- dist.nodes(phylogeny)
-    
-    summary_df$mean_internode_dist_neg_enrich <- NA
-    summary_df$max_internode_dist_neg_enrich <- NA
-    summary_df$mean_internode_dist_pos_enrich <- NA
-    summary_df$max_internode_dist_pos_enrich <- NA
-    
-  }
-  
+ 
   if(run_multinomial_test) {
     
     if(verbose) { message("Will run multinomial test on every function (that meets the multinomial_min_FSNs cut-off).") } 
@@ -303,22 +285,9 @@ POMS_pipeline <- function(abun,
          summary_df[func_id, "multinomial_p"] <- XNomial::xmulti(obs=observed_counts,
                                                                  expr=multinomial_exp_prop, detail=0)$pProb 
        }
-      
     }
-    
-    if(calc_node_dist) {
-      
-      summary_df[func_id, c("mean_internode_dist_group1_enrich",
-                            "max_internode_dist_group1_enrich",
-                            "mean_internode_dist_group2_enrich",
-                            "max_internode_dist_group2_enrich")] <- c(internode_mean_max_dist(phy = phylogeny, dist_matrix = phylogeny_node_dists,
-                                                                                              node_labels = func_summaries[[func_id]]$positive_nodes),
-                                                                      internode_mean_max_dist(phy = phylogeny, dist_matrix = phylogeny_node_dists,
-                                                                                              node_labels = func_summaries[[func_id]]$negative_nodes))
-    }
-    
   }
-  
+
     if((run_multinomial_test) && (multinomial_correction != "none")) {
       summary_df$multinomial_corr <- p.adjust(summary_df$multinomial_p, multinomial_correction)
     }
@@ -329,7 +298,7 @@ POMS_pipeline <- function(abun,
                                header=FALSE, sep="\t", row.names=1, stringsAsFactors = FALSE, quote="")
     summary_df$description <- func_descrip[rownames(summary_df), "V2"]
   } else {
-    if(verbose) { message("Function description mapfile not specified (func_descrip_infile argument), so no descriptions will be added.") }    
+    if(verbose) { message("Function description mapfile not specified (func_descrip_infile argument), so no descriptions will be added.") } 
   }
   
   results <- list(balances_info=calculated_balances,
@@ -376,7 +345,6 @@ check_POMS_pipeline_args <- function(abun,
                                      func_descrip_infile,
                                      run_multinomial_test,
                                      multinomial_correction,
-                                     calc_node_dist,
                                      detailed_output,
                                      verbose) {
 
@@ -428,9 +396,7 @@ check_POMS_pipeline_args <- function(abun,
   if(! is.null(func_descrip_infile) && (! file.exists(func_descrip_infile))) { stop("Stopping - func_descrip_infile is non-NULL, but the specified file was not found.") }
 
   if(! is.logical(run_multinomial_test)) { stop("Stopping - run_multinomial_test argument needs to be TRUE or FALSE.") }
-  
-  if(! is.logical(calc_node_dist)) { stop("Stopping - calc_node_dist argument needs to be TRUE or FALSE.") }
-  
+    
   if(! is.logical(detailed_output)) { stop("Stopping - detailed_output argument needs to be TRUE or FALSE.") }
   
   if(! is.logical(verbose)) { stop("Stopping - verbose argument needs to be TRUE or FALSE.") }
