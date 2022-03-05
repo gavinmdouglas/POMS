@@ -68,8 +68,6 @@
 #' This should be tab-delimited with no header and one function per line.
 #' If this option is specified then an additional description column will be added to the output table.
 #' 
-#' @param run_multinomial_test Boolean flag for whether multinomial tests should be run.
-#' 
 #' @param multinomial_correction Multiple-test correction to use on raw multinomial test p-values.
 #' Must be a p.adjust option.
 #'  
@@ -102,7 +100,6 @@ POMS_pipeline <- function(abun,
                           FSN_p_cutoff = 0.05,
                           FSN_correction = "none",
                           func_descrip_infile = NULL,
-                          run_multinomial_test=TRUE,
                           multinomial_correction="BH",
                           detailed_output=FALSE,
                           verbose=FALSE) {
@@ -126,7 +123,6 @@ POMS_pipeline <- function(abun,
                                           FSN_p_cutoff=FSN_p_cutoff,
                                           FSN_correction=FSN_correction,
                                           func_descrip_infile=func_descrip_infile,
-                                          run_multinomial_test=run_multinomial_test,
                                           multinomial_correction=multinomial_correction,
                                           detailed_output=detailed_output,
                                           verbose=verbose)
@@ -237,20 +233,16 @@ POMS_pipeline <- function(abun,
   rownames(summary_df) <- all_func_id
   
   if(verbose) { message("Creating results dataframe.") }
- 
-  if(run_multinomial_test) {
-    
-    if(verbose) { message("Will run multinomial test on every function (that meets the multinomial_min_FSNs cut-off).") } 
+
+  if(verbose) { message("Running multinomial test on every function (that meets the multinomial_min_FSNs cut-off).") } 
   
-    prop_sig_node_balances <- length(sig_nodes) / length(calculated_balances$balances)
-    
-    multinomial_exp_prop <- c(prop_sig_node_balances * 0.5, prop_sig_node_balances * 0.5, 1 - prop_sig_node_balances)
-    
-    names(multinomial_exp_prop) <- c("exp_sig_nodes_group1_enrich_prop", "exp_sig_nodes_group2_enrich_prop", "exp_nonsig_nodes_enrich_prop")
-    
-    summary_df$multinomial_p <- NA
-  }
+  prop_sig_node_balances <- length(sig_nodes) / length(calculated_balances$balances)
   
+  multinomial_exp_prop <- c(prop_sig_node_balances * 0.5, prop_sig_node_balances * 0.5, 1 - prop_sig_node_balances)
+  
+  names(multinomial_exp_prop) <- c("exp_sig_nodes_group1_enrich_prop", "exp_sig_nodes_group2_enrich_prop", "exp_nonsig_nodes_enrich_prop")
+  
+  summary_df$multinomial_p <- NA
   
   for(func_id in all_func_id) {
     
@@ -274,21 +266,18 @@ POMS_pipeline <- function(abun,
     if(max(table(all_nodes_present)) > 1) {
       stop("Node categorized into at least 2 mutually exclusive groups.")
     }
-    
-    if(run_multinomial_test) {
      
-      observed_counts <- as.numeric(summary_df[func_id, c("num_sig_nodes_group1_enrich",
-                                                           "num_sig_nodes_group2_enrich",
-                                                           "num_nonsig_nodes_enrich")])
-
-      if((length(sig_nodes) > 0) && (summary_df[func_id, "num_nodes_enriched"] >= multinomial_min_FSNs) && (prop_sig_node_balances != 1)) {
-         summary_df[func_id, "multinomial_p"] <- XNomial::xmulti(obs=observed_counts,
-                                                                 expr=multinomial_exp_prop, detail=0)$pProb 
-       }
+    observed_counts <- as.numeric(summary_df[func_id, c("num_sig_nodes_group1_enrich",
+                                                        "num_sig_nodes_group2_enrich",
+                                                        "num_nonsig_nodes_enrich")])
+    
+    if((length(sig_nodes) > 0) && (summary_df[func_id, "num_nodes_enriched"] >= multinomial_min_FSNs) && (prop_sig_node_balances != 1)) {
+      summary_df[func_id, "multinomial_p"] <- XNomial::xmulti(obs=observed_counts,
+                                                              expr=multinomial_exp_prop, detail=0)$pProb 
     }
   }
 
-    if((run_multinomial_test) && (multinomial_correction != "none")) {
+    if (multinomial_correction != "none") {
       summary_df$multinomial_corr <- p.adjust(summary_df$multinomial_p, multinomial_correction)
     }
   
@@ -305,9 +294,7 @@ POMS_pipeline <- function(abun,
                   sig_nodes=sig_nodes,
                   df=summary_df)
   
-  if(run_multinomial_test) {
-    results[["multinomial_exp_prop"]] <- multinomial_exp_prop
-  }
+  results[["multinomial_exp_prop"]] <- multinomial_exp_prop
   
   if(detailed_output) {
       # Restrict vector of mean directions to significant nodes only to avoid confusion.
@@ -343,7 +330,6 @@ check_POMS_pipeline_args <- function(abun,
                                      FSN_p_cutoff,
                                      FSN_correction,
                                      func_descrip_infile,
-                                     run_multinomial_test,
                                      multinomial_correction,
                                      detailed_output,
                                      verbose) {
@@ -395,8 +381,6 @@ check_POMS_pipeline_args <- function(abun,
   
   if(! is.null(func_descrip_infile) && (! file.exists(func_descrip_infile))) { stop("Stopping - func_descrip_infile is non-NULL, but the specified file was not found.") }
 
-  if(! is.logical(run_multinomial_test)) { stop("Stopping - run_multinomial_test argument needs to be TRUE or FALSE.") }
-    
   if(! is.logical(detailed_output)) { stop("Stopping - detailed_output argument needs to be TRUE or FALSE.") }
   
   if(! is.logical(verbose)) { stop("Stopping - verbose argument needs to be TRUE or FALSE.") }
@@ -415,7 +399,6 @@ check_POMS_pipeline_args <- function(abun,
               FSN_p_cutoff=FSN_p_cutoff,
               FSN_correction=FSN_correction,
               func_descrip_infile=func_descrip_infile,
-              run_multinomial_test=run_multinomial_test,
               multinomial_correction=multinomial_correction,
               calc_node_dist=calc_node_dist,
               detailed_output=detailed_output,
