@@ -134,9 +134,11 @@ POMS_pipeline <- function(abun,
     func <- filter_rare_table_cols(func,  min_func_instances, min_func_prop, verbose)
   }
   
-  if(is.null(significant_nodes)) {
+  if (is.null(significant_nodes)) {
     
-    if(verbose) { message("Calculating balances.") }
+    if (verbose) { message("Calculating balances.") }
+    
+    if ()
     
     calculated_balances <- compute_tree_node_balances(abun=abun,
                                                       phylogeny=phylogeny,
@@ -165,7 +167,7 @@ POMS_pipeline <- function(abun,
     
     sig_nodes <- significant_nodes
     
-    if(any(! sig_nodes %in% phylogeny$node.label)) { stop("Not all sig. nodes are not found in phylogeny.")}
+    if (any(! sig_nodes %in% phylogeny$node.label)) { stop("Not all sig. nodes are not found in phylogeny.")}
     
     calculated_balances <- list()
     calculated_balances$balances <- tested_nodes
@@ -178,7 +180,7 @@ POMS_pipeline <- function(abun,
     names(calculated_balances$features) <- names(tested_nodes)
     
     negligible_nodes_i <- which(! names(phylogeny$node.label) %in% names(tested_nodes))
-    if(length(negligible_nodes_i) > 0) {
+    if (length(negligible_nodes_i) > 0) {
       calculated_balances$negligible_nodes <- phylogeny$node.label[negligible_nodes_i]
     } else {
       calculated_balances$negligible_nodes <- c()
@@ -205,13 +207,13 @@ POMS_pipeline <- function(abun,
   
   names(all_balances_enriched_funcs) <- names(calculated_balances$balances)
   
-  if(verbose) { message("Summarizing significant functions across nodes.") }
+  if (verbose) { message("Summarizing significant functions across nodes.") }
   
   func_summaries <- summarize_node_enrichment(all_balances_enriched_funcs, sig_nodes, FSN_p_cutoff)
   
   # Get single DF summarizing the key metrics and print this out.
   all_func_id <- c()
-  for(balance in names(all_balances_enriched_funcs)) {
+  for (balance in names(all_balances_enriched_funcs)) {
     all_func_id <- c(all_func_id, rownames(all_balances_enriched_funcs[[balance]]))
   }
   
@@ -219,7 +221,7 @@ POMS_pipeline <- function(abun,
     all_func_id <- all_func_id[-which(duplicated(all_func_id))]
   }
   
-  if(verbose) { message("Creating results dataframe.") }
+  if (verbose) { message("Creating results dataframe.") }
 
   summary_df <- data.frame(matrix(NA, nrow=length(all_func_id), ncol=4))
   
@@ -232,9 +234,9 @@ POMS_pipeline <- function(abun,
   
   rownames(summary_df) <- all_func_id
   
-  if(verbose) { message("Creating results dataframe.") }
+  if (verbose) { message("Creating results dataframe.") }
 
-  if(verbose) { message("Running multinomial test on every function (that meets the multinomial_min_FSNs cut-off).") } 
+  if (verbose) { message("Running multinomial test on every function (that meets the multinomial_min_FSNs cut-off).") } 
   
   prop_sig_node_balances <- length(sig_nodes) / length(calculated_balances$balances)
   
@@ -244,50 +246,50 @@ POMS_pipeline <- function(abun,
   
   summary_df$multinomial_p <- NA
   
-  for(func_id in all_func_id) {
+  for (func_id in all_func_id) {
     
-    summary_df[func_id, c("num_sig_nodes_group1_enrich",
-                          "num_sig_nodes_group2_enrich",
-                          "num_nonsig_nodes_enrich")] <- c(length(func_summaries[[func_id]]$positive_nodes),
-                                                           length(func_summaries[[func_id]]$negative_nodes),
-                                                           length(func_summaries[[func_id]]$enriched_nonsig_nodes))
-    
-    
-    summary_df[func_id, "num_nodes_enriched"] <- sum(as.numeric(summary_df[func_id, c("num_sig_nodes_group1_enrich",
-                                                                                      "num_sig_nodes_group2_enrich",
-                                                                                      "num_nonsig_nodes_enrich")]))
-        
-    all_nodes_present <- c(func_summaries[[func_id]]$nonenriched_sig_nodes,
-                           func_summaries[[func_id]]$positive_nodes,
-                           func_summaries[[func_id]]$negative_nodes,
-                           func_summaries[[func_id]]$nonenriched_nonsig_nodes,
-                           func_summaries[[func_id]]$enriched_nonsig_nodes)
-    
-    if(max(table(all_nodes_present)) > 1) {
-      stop("Node categorized into at least 2 mutually exclusive groups.")
+      summary_df[func_id, c("num_sig_nodes_group1_enrich",
+                            "num_sig_nodes_group2_enrich",
+                            "num_nonsig_nodes_enrich")] <- c(length(func_summaries[[func_id]]$positive_nodes),
+                                                             length(func_summaries[[func_id]]$negative_nodes),
+                                                             length(func_summaries[[func_id]]$enriched_nonsig_nodes))
+      
+      
+      summary_df[func_id, "num_nodes_enriched"] <- sum(as.numeric(summary_df[func_id, c("num_sig_nodes_group1_enrich",
+                                                                                        "num_sig_nodes_group2_enrich",
+                                                                                        "num_nonsig_nodes_enrich")]))
+          
+      all_nodes_present <- c(func_summaries[[func_id]]$nonenriched_sig_nodes,
+                             func_summaries[[func_id]]$positive_nodes,
+                             func_summaries[[func_id]]$negative_nodes,
+                             func_summaries[[func_id]]$nonenriched_nonsig_nodes,
+                             func_summaries[[func_id]]$enriched_nonsig_nodes)
+      
+      if (max(table(all_nodes_present)) > 1) {
+        stop("Node categorized into at least 2 mutually exclusive groups.")
+      }
+       
+      observed_counts <- as.numeric(summary_df[func_id, c("num_sig_nodes_group1_enrich",
+                                                          "num_sig_nodes_group2_enrich",
+                                                          "num_nonsig_nodes_enrich")])
+      
+      if ((length(sig_nodes) > 0) && (summary_df[func_id, "num_nodes_enriched"] >= multinomial_min_FSNs) && (prop_sig_node_balances != 1)) {
+        summary_df[func_id, "multinomial_p"] <- XNomial::xmulti(obs=observed_counts,
+                                                                expr=multinomial_exp_prop, detail=0)$pProb 
+      }
     }
-     
-    observed_counts <- as.numeric(summary_df[func_id, c("num_sig_nodes_group1_enrich",
-                                                        "num_sig_nodes_group2_enrich",
-                                                        "num_nonsig_nodes_enrich")])
-    
-    if((length(sig_nodes) > 0) && (summary_df[func_id, "num_nodes_enriched"] >= multinomial_min_FSNs) && (prop_sig_node_balances != 1)) {
-      summary_df[func_id, "multinomial_p"] <- XNomial::xmulti(obs=observed_counts,
-                                                              expr=multinomial_exp_prop, detail=0)$pProb 
-    }
-  }
 
     if (multinomial_correction != "none") {
       summary_df$multinomial_corr <- p.adjust(summary_df$multinomial_p, multinomial_correction)
     }
   
-    if(! is.null(func_descrip_infile)) {
-    if(verbose) { message("Adding function descriptions to output.") }
+    if (! is.null(func_descrip_infile)) {
+    if (verbose) { message("Adding function descriptions to output.") }
     func_descrip <- read.table(func_descrip_infile,
                                header=FALSE, sep="\t", row.names=1, stringsAsFactors = FALSE, quote="")
     summary_df$description <- func_descrip[rownames(summary_df), "V2"]
   } else {
-    if(verbose) { message("Function description mapfile not specified (func_descrip_infile argument), so no descriptions will be added.") } 
+    if (verbose) { message("Function description mapfile not specified (func_descrip_infile argument), so no descriptions will be added.") } 
   }
   
   results <- list(balances_info=calculated_balances,
@@ -296,7 +298,7 @@ POMS_pipeline <- function(abun,
   
   results[["multinomial_exp_prop"]] <- multinomial_exp_prop
   
-  if(detailed_output) {
+  if (detailed_output) {
       # Restrict vector of mean directions to significant nodes only to avoid confusion.
       pairwise_node_out$mean_direction <- pairwise_node_out$mean_direction[sig_nodes]
 
@@ -334,11 +336,11 @@ check_POMS_pipeline_args <- function(abun,
                                      detailed_output,
                                      verbose) {
 
-  if(((is.null(significant_nodes)) && (! is.null(tested_nodes))) || ((! is.null(significant_nodes)) && (is.null(tested_nodes)))) {
+  if (((is.null(significant_nodes)) && (! is.null(tested_nodes))) || ((! is.null(significant_nodes)) && (is.null(tested_nodes)))) {
     stop("Stopping - arguments significant_nodes and tested_nodes either both need to be given or neither should be specified.")
   }
 
-  if((! is.null(significant_nodes)) && (length(significant_nodes) == 0)) { stop("Stopping - vector specified for significant_nodes argument is empty.") }
+  if ((! is.null(significant_nodes)) && (length(significant_nodes) == 0)) { stop("Stopping - vector specified for significant_nodes argument is empty.") }
 
   if ((! is.null(significant_nodes)) && (! is.null(tested_nodes))) {
     if (length(which(significant_nodes %in% tested_nodes)) != length(significant_nodes)) {
@@ -346,44 +348,44 @@ check_POMS_pipeline_args <- function(abun,
     }
   }
   
-  if(class(abun) != "data.frame") { stop("Stopping - argument abun needs to be of the class data.frame.") }
-  if(class(func) != "data.frame") { stop("Stopping - argument func needs to be of the class data.frame.") }
-  if(class(phylogeny) != "phylo") { stop("Stopping - argument phylo needs to be of the class phylo.") }
+  if (class(abun) != "data.frame") { stop("Stopping - argument abun needs to be of the class data.frame.") }
+  if (class(func) != "data.frame") { stop("Stopping - argument func needs to be of the class data.frame.") }
+  if (class(phylogeny) != "phylo") { stop("Stopping - argument phylo needs to be of the class phylo.") }
 
-  if(class(group1_samples) != "character") { stop("Stopping - argument group1_samples needs to be of the class character.") }
-  if(class(group2_samples) != "character") { stop("Stopping - argument group2_samples needs to be of the class character.") }
-  if(length(group1_samples) == 0) { stop("Stopping - argument group1_samples is of length 0.") }
-  if(length(group2_samples) == 0) { stop("Stopping - argument group2_samples is of length 0.") }
-  if(length(which(group1_samples %in% colnames(abun))) != length(group1_samples)) { stop("Stopping - not all group1_samples match columns of abun argument.") }
-  if(length(which(group2_samples %in% colnames(abun))) != length(group2_samples)) { stop("Stopping - not all group2_samples match columns of abun argument.") }
-  if(length(which(group1_samples %in% group2_samples)) > 0) { stop("Stopping - at least one sample overlaps between group1 and group2.") }
+  if (class(group1_samples) != "character") { stop("Stopping - argument group1_samples needs to be of the class character.") }
+  if (class(group2_samples) != "character") { stop("Stopping - argument group2_samples needs to be of the class character.") }
+  if (length(group1_samples) == 0) { stop("Stopping - argument group1_samples is of length 0.") }
+  if (length(group2_samples) == 0) { stop("Stopping - argument group2_samples is of length 0.") }
+  if (length(which(group1_samples %in% colnames(abun))) != length(group1_samples)) { stop("Stopping - not all group1_samples match columns of abun argument.") }
+  if (length(which(group2_samples %in% colnames(abun))) != length(group2_samples)) { stop("Stopping - not all group2_samples match columns of abun argument.") }
+  if (length(which(group1_samples %in% group2_samples)) > 0) { stop("Stopping - at least one sample overlaps between group1 and group2.") }
   
-  if((class(ncores) != "integer") && (class(ncores) != "numeric")) { stop("Stopping - ncores argument needs to be of class numeric or integer.") }
-  if(ncores <= 0) { stop("Stopping - ncores argument needs to be higher than 0.") }
+  if ((class(ncores) != "integer") && (class(ncores) != "numeric")) { stop("Stopping - ncores argument needs to be of class numeric or integer.") }
+  if (ncores <= 0) { stop("Stopping - ncores argument needs to be higher than 0.") }
 
-  if((class(pseudocount) != "integer") && (class(pseudocount) != "numeric")) { stop("Stopping - pseudocount argument needs to be of class numeric or integer.") }
-  if(pseudocount < 0) { stop("Stopping - pseudocount argument cannot be lower than 0.") }
+  if ((class(pseudocount) != "integer") && (class(pseudocount) != "numeric")) { stop("Stopping - pseudocount argument needs to be of class numeric or integer.") }
+  if (pseudocount < 0) { stop("Stopping - pseudocount argument cannot be lower than 0.") }
 
-  if((class(multinomial_min_FSNs) != "integer") && (class(multinomial_min_FSNs) != "numeric")) { stop("Stopping - multinomial_min_FSNs argument needs to be of class numeric or integer.") }
-  if(multinomial_min_FSNs < 0) { stop("Stopping - multinomial_min_FSNs argument cannot be lower than 0.") }
+  if ((class(multinomial_min_FSNs) != "integer") && (class(multinomial_min_FSNs) != "numeric")) { stop("Stopping - multinomial_min_FSNs argument needs to be of class numeric or integer.") }
+  if (multinomial_min_FSNs < 0) { stop("Stopping - multinomial_min_FSNs argument cannot be lower than 0.") }
   
-  if(min_num_tips > length(phylogeny$tip.label) / 2) { stop("Stopping - the min_num_tips argument cannot be higher than half of the total number of tips.") }
+  if (min_num_tips > length(phylogeny$tip.label) / 2) { stop("Stopping - the min_num_tips argument cannot be higher than half of the total number of tips.") }
 
-  if((min_func_prop < 0) || (min_func_prop > 1)) { stop("Stopping - the min_func_prop argument must be between 0 and 1.") }
-  if((BSN_p_cutoff < 0) || (BSN_p_cutoff > 1)) { stop("Stopping - the BSN_p_cutoff argument must be between 0 and 1.") }
-  if((FSN_p_cutoff < 0) || (FSN_p_cutoff > 1)) { stop("Stopping - the FSN_p_cutoff argument must be between 0 and 1.") }
+  if ((min_func_prop < 0) || (min_func_prop > 1)) { stop("Stopping - the min_func_prop argument must be between 0 and 1.") }
+  if ((BSN_p_cutoff < 0) || (BSN_p_cutoff > 1)) { stop("Stopping - the BSN_p_cutoff argument must be between 0 and 1.") }
+  if ((FSN_p_cutoff < 0) || (FSN_p_cutoff > 1)) { stop("Stopping - the FSN_p_cutoff argument must be between 0 and 1.") }
   
-  if((min_func_instances < 0) || (min_func_instances > ncol(func))) { stop("Stopping - the min_func_instances argument must be between 0 and 1.") }
+  if ((min_func_instances < 0) || (min_func_instances > ncol(func))) { stop("Stopping - the min_func_instances argument must be between 0 and 1.") }
 
-  if(! FSN_correction %in% p.adjust.methods) { stop("Stopping - FSN_correction argument needs to be found in p.adjust.methods.") }
-  if(! BSN_correction %in% p.adjust.methods) { stop("Stopping - BSN_correction argument needs to be found in p.adjust.methods.") }
-  if(! multinomial_correction %in% p.adjust.methods) { stop("Stopping - multinomial_correction argument needs to be found in p.adjust.methods.") }
+  if (! FSN_correction %in% p.adjust.methods) { stop("Stopping - FSN_correction argument needs to be found in p.adjust.methods.") }
+  if (! BSN_correction %in% p.adjust.methods) { stop("Stopping - BSN_correction argument needs to be found in p.adjust.methods.") }
+  if (! multinomial_correction %in% p.adjust.methods) { stop("Stopping - multinomial_correction argument needs to be found in p.adjust.methods.") }
   
-  if(! is.null(func_descrip_infile) && (! file.exists(func_descrip_infile))) { stop("Stopping - func_descrip_infile is non-NULL, but the specified file was not found.") }
+  if (! is.null(func_descrip_infile) && (! file.exists(func_descrip_infile))) { stop("Stopping - func_descrip_infile is non-NULL, but the specified file was not found.") }
 
-  if(! is.logical(detailed_output)) { stop("Stopping - detailed_output argument needs to be TRUE or FALSE.") }
+  if (! is.logical(detailed_output)) { stop("Stopping - detailed_output argument needs to be TRUE or FALSE.") }
   
-  if(! is.logical(verbose)) { stop("Stopping - verbose argument needs to be TRUE or FALSE.") }
+  if (! is.logical(verbose)) { stop("Stopping - verbose argument needs to be TRUE or FALSE.") }
 
   return(list(group1_samples=group1_samples,
               group2_samples=group2_samples,
@@ -415,7 +417,7 @@ summarize_node_enrichment <- function(enriched_funcs, sig_nodes, func_p_cutoff) 
 
   # First get all unique functions.
   all_func_id <- c()
-  for(node in names(enriched_funcs)) {
+  for (node in names(enriched_funcs)) {
     all_func_id <- c(all_func_id, rownames(enriched_funcs[[node]]))
   }
 
@@ -426,7 +428,7 @@ summarize_node_enrichment <- function(enriched_funcs, sig_nodes, func_p_cutoff) 
   func_summaries <- list()
 
   # Loop through each function and get breakdown of contributing node names.
-  for(func_id in all_func_id) {
+  for (func_id in all_func_id) {
 
     func_summaries[[func_id]]$positive_nodes <- c()
     func_summaries[[func_id]]$negative_nodes <- c()
@@ -436,16 +438,16 @@ summarize_node_enrichment <- function(enriched_funcs, sig_nodes, func_p_cutoff) 
     func_summaries[[func_id]]$missing_sig_nodes <- c()
     func_summaries[[func_id]]$missing_nonsig_nodes <- c()
 
-    for(node in names(enriched_funcs)) {
-      if(func_id %in% rownames(enriched_funcs[[node]])) {
+    for (node in names(enriched_funcs)) {
+      if (func_id %in% rownames(enriched_funcs[[node]])) {
 
-        if(node %in% sig_nodes) {
+        if (node %in% sig_nodes) {
           # If this node was significant then categorize it as either positive, negative, or nonenriched.
-          if(as.numeric(enriched_funcs[[node]][func_id, "P_corr"]) < func_p_cutoff) {
+          if (as.numeric(enriched_funcs[[node]][func_id, "P_corr"]) < func_p_cutoff) {
 
-            if(as.numeric(enriched_funcs[[node]][func_id, "OR"]) > 1) {
+            if (as.numeric(enriched_funcs[[node]][func_id, "OR"]) > 1) {
               func_summaries[[func_id]]$positive_nodes <- c(func_summaries[[func_id]]$positive_nodes, node)
-            } else if(as.numeric(enriched_funcs[[node]][func_id, "OR"]) < 1) {
+            } else if (as.numeric(enriched_funcs[[node]][func_id, "OR"]) < 1) {
               func_summaries[[func_id]]$negative_nodes <- c(func_summaries[[func_id]]$negative_nodes, node)
             } else {
               print(enriched_funcs[[node]][func_id, ])
@@ -456,14 +458,14 @@ summarize_node_enrichment <- function(enriched_funcs, sig_nodes, func_p_cutoff) 
           }
         } else {
           # Since this node was NOT significant then categorize it as either enriched or nonenriched.
-          if(as.numeric(enriched_funcs[[node]][func_id, "P_corr"]) < func_p_cutoff) {
+          if (as.numeric(enriched_funcs[[node]][func_id, "P_corr"]) < func_p_cutoff) {
             func_summaries[[func_id]]$enriched_nonsig_nodes <- c(func_summaries[[func_id]]$enriched_nonsig_nodes, node)
           } else {
             func_summaries[[func_id]]$nonenriched_nonsig_nodes <- c(func_summaries[[func_id]]$nonenriched_nonsig_nodes, node)
           }
         }
       } else {
-        if(node %in% sig_nodes) {
+        if (node %in% sig_nodes) {
           func_summaries[[func_id]]$missing_sig_nodes <- c(func_summaries[[func_id]]$missing_sig_nodes, node)
         } else {
           func_summaries[[func_id]]$missing_nonsig_nodes <- c(func_summaries[[func_id]]$missing_nonsig_nodes, node)
@@ -473,4 +475,3 @@ summarize_node_enrichment <- function(enriched_funcs, sig_nodes, func_p_cutoff) 
   }
   return(func_summaries)
 }
-
