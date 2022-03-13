@@ -140,12 +140,11 @@ POMS_pipeline <- function(abun,
     
     # Check whether pseudocount setting is reasonable.
     # This is especially important if the pseudocount is set to 1, but the data is proportional.
-    # Working note: commented out for now, pending further testing.
-    # min_nonzero_abun <- min(abun[abun > 0])
-    # if (min_nonzero_abun < pseudocount) {
-    #   message("WARNING: specified pseudocount is larger than the smallest non-zero abundance value.")
-    #   message("MAKE SURE TO USE A LOWER PSEUDOCOUNT VALUE IF THE INPUT TABLE IS PROPORTIONAL/PERCENTAGE DATA.")
-    # }
+    min_nonzero_abun <- min(abun[abun > 0])
+    if (min_nonzero_abun < pseudocount) {
+       message("WARNING: specified pseudocount is larger than the smallest non-zero abundance value.")
+       message("MAKE SURE TO USE A LOWER PSEUDOCOUNT VALUE IF THE INPUT TABLE IS PROPORTIONAL/PERCENTAGE DATA.")
+    }
     
     calculated_balances <- compute_tree_node_balances(abun=abun,
                                                       phylogeny=phylogeny,
