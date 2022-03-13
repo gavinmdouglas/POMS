@@ -234,9 +234,9 @@ POMS_pipeline <- function(abun,
   rownames(summary_df) <- all_func_id
   
   colnames(summary_df) <- c("num_FSNs",
-                            "num_sig_nodes_group1_enrich",
-                            "num_sig_nodes_group2_enrich",
-                            "num_nonsig_nodes_enrich")
+                            "num_FSNs_group1_enrich",
+                            "num_FSNs_group2_enrich",
+                            "num_FSNs_at_nonBSNs")
   
   rownames(summary_df) <- all_func_id
   
@@ -248,22 +248,24 @@ POMS_pipeline <- function(abun,
   
   multinomial_exp_prop <- c(prop_sig_node_balances * 0.5, prop_sig_node_balances * 0.5, 1 - prop_sig_node_balances)
   
-  names(multinomial_exp_prop) <- c("exp_sig_nodes_group1_enrich_prop", "exp_sig_nodes_group2_enrich_prop", "exp_nonsig_nodes_enrich_prop")
+  names(multinomial_exp_prop) <- c("exp_sig_nodes_group1_enrich_prop",
+                                   "exp_sig_nodes_group2_enrich_prop",
+                                   "exp_nonsig_nodes_enrich_prop")
   
   summary_df$multinomial_p <- NA
   
   for (func_id in all_func_id) {
     
-      summary_df[func_id, c("num_sig_nodes_group1_enrich",
-                            "num_sig_nodes_group2_enrich",
-                            "num_nonsig_nodes_enrich")] <- c(length(func_summaries[[func_id]]$positive_nodes),
-                                                             length(func_summaries[[func_id]]$negative_nodes),
-                                                             length(func_summaries[[func_id]]$enriched_nonsig_nodes))
+      summary_df[func_id, c("num_FSNs_group1_enrich",
+                            "num_FSNs_group2_enrich",
+                            "num_FSNs_at_nonBSNs")] <- c(length(func_summaries[[func_id]]$positive_nodes),
+                                                         length(func_summaries[[func_id]]$negative_nodes),
+                                                         length(func_summaries[[func_id]]$enriched_nonsig_nodes))
       
       
-      summary_df[func_id, "num_nodes_enriched"] <- sum(as.numeric(summary_df[func_id, c("num_sig_nodes_group1_enrich",
-                                                                                        "num_sig_nodes_group2_enrich",
-                                                                                        "num_nonsig_nodes_enrich")]))
+      summary_df[func_id, "num_FSNs"] <- sum(as.numeric(summary_df[func_id, c("num_FSNs_group1_enrich",
+                                                                              "num_FSNs_group2_enrich",
+                                                                              "num_FSNs_at_nonBSNs")]))
           
       all_nodes_present <- c(func_summaries[[func_id]]$nonenriched_sig_nodes,
                              func_summaries[[func_id]]$positive_nodes,
@@ -275,11 +277,11 @@ POMS_pipeline <- function(abun,
         stop("Node categorized into at least 2 mutually exclusive groups.")
       }
        
-      observed_counts <- as.numeric(summary_df[func_id, c("num_sig_nodes_group1_enrich",
-                                                          "num_sig_nodes_group2_enrich",
-                                                          "num_nonsig_nodes_enrich")])
+      observed_counts <- as.numeric(summary_df[func_id, c("num_FSNs_group1_enrich",
+                                                          "num_FSNs_group2_enrich",
+                                                          "num_FSNs_at_nonBSNs")])
       
-      if ((length(sig_nodes) > 0) && (summary_df[func_id, "num_nodes_enriched"] >= multinomial_min_FSNs) && (prop_sig_node_balances != 1)) {
+      if ((length(sig_nodes) > 0) && (summary_df[func_id, "num_FSNs"] >= multinomial_min_FSNs) && (prop_sig_node_balances != 1)) {
         summary_df[func_id, "multinomial_p"] <- XNomial::xmulti(obs=observed_counts,
                                                                 expr=multinomial_exp_prop, detail=0)$pProb 
       }
@@ -408,7 +410,6 @@ check_POMS_pipeline_args <- function(abun,
               FSN_correction=FSN_correction,
               func_descrip_infile=func_descrip_infile,
               multinomial_correction=multinomial_correction,
-              calc_node_dist=calc_node_dist,
               detailed_output=detailed_output,
               verbose=verbose))
 }
