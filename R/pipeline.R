@@ -233,7 +233,7 @@ POMS_pipeline <- function(abun,
   
   rownames(summary_df) <- all_func_id
   
-  colnames(summary_df) <- c("num_nodes_enriched",
+  colnames(summary_df) <- c("num_FSNs",
                             "num_sig_nodes_group1_enrich",
                             "num_sig_nodes_group2_enrich",
                             "num_nonsig_nodes_enrich")

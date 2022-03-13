@@ -23,9 +23,7 @@ POMS_pipeline(
   FSN_p_cutoff = 0.05,
   FSN_correction = "none",
   func_descrip_infile = NULL,
-  run_multinomial_test = TRUE,
   multinomial_correction = "BH",
-  calc_node_dist = FALSE,
   detailed_output = FALSE,
   verbose = FALSE
 )
@@ -82,13 +80,8 @@ Must be a p.adjust option.}
 This should be tab-delimited with no header and one function per line.
 If this option is specified then an additional description column will be added to the output table.}
 
-\item{run_multinomial_test}{Boolean flag for whether multinomial tests should be run.}
-
 \item{multinomial_correction}{Multiple-test correction to use on raw multinomial test p-values.
 Must be a p.adjust option.}
-
-\item{calc_node_dist}{Experimental feature that has not been validated.
-Boolean flag for whether internode distances should be computed between significant BSNs.}
 
 \item{detailed_output}{Boolean flag to indicate that several intermediate objects should be included in the final output.
 This is useful when troubleshooting issues, but is not expected to be useful for most users.}
