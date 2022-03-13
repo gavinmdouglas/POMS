@@ -14,21 +14,33 @@ library(devtools)
 install_github("gavinmdouglas/POMS", ref = "main")
 ```
 
+### Key function
+
+The key POMS function is `POMS_pipeline`, which requires tables of taxa and function abundances, a tree of taxa, and sample names split into group1 and group2. 
+
+This function identifies significant nodes based on sample balances using a Wilcoxon test by default, or significant nodes can be specified manually. Significant nodes are referred to as Balance-Significant Nodes (BSNs). Fisher's exact tests are run at each node in the tree with sufficient numbers of underlying tips on each side. Significant nodes based on this test are referred to as Function-Significant Nodes (FSNs). The key output is the tally of the intersecting nodes based on the sets of BSNs and FSNs.
+
+Each FSN can be categorized in one of three ways:
+1. It does not intersect with any BSN.
+1. It intersects with a BSN and the functional enrichment is within the taxa that are relatively more abundant in group 1 samples.
+1. Same as #2, but enriched within taxa that are relatively more abundant in group 2 samples.
+
+A multinomial test is run to see if the tallies the FSNs in these three categories is significantly different from the random expectation.
+
 ### Example usage
 
-The key POMS function is `POMS_pipeline`, which requires tables of taxa and function abundances, a tree of taxa, and sample names split into group1 and group2. The below code will run the pipeline on example input files that are part of this repository. These example files are highly simplified to run quickly - for instance, there are only two functions tested and only 60 tips in the tree.
+The below code will run the pipeline on example input files that are part of this repository. These example files are highly simplified to run quickly - for instance, there are only two functions tested and only 60 tips in the tree.
 
 _Note: the options `min_num_tips`, `multinomial_min_FSNs`, and `min_func_instances` are set to non-default values to work with this small example, but normally you could leave them to be default._
 
 ```R
 setwd("path/to/POMS/example_files/")
 
-library(ape)
 library(POMS)
 
 ex_taxa_abun <- read.table("ex_taxa_abun.tsv.gz", header = TRUE, sep = "\t", row.names = 1)
 ex_func <- read.table("ex_func.tsv.gz", header = TRUE, sep = "\t", row.names = 1)
-ex_tree <- read.tree("ex_tree.newick")
+ex_tree <- ape::read.tree("ex_tree.newick")
 ex_group1 <- read.table("ex_group1.txt.gz", stringsAsFactors = FALSE)$V1
 ex_group2 <- read.table("ex_group2.txt.gz", stringsAsFactors = FALSE)$V1
 
@@ -53,22 +65,22 @@ The above usage example will produce a list called `POMS_out`. This can be a ver
 ```R
 t(POMS_out$df)
 
-#                             K07106 K02036
-# num_nodes_enriched               4 5.0000
-# num_sig_nodes_group1_enrich      2 5.0000
-# num_sig_nodes_group2_enrich      1 0.0000
-# num_nonsig_nodes_enrich          1 0.0000
-# multinomial_p                    1 0.0272
-# multinomial_corr                 1 0.0544
+#                        K07106 K02036
+# num_FSNs                    4 5.0000
+# num_FSNs_group1_enrich      2 5.0000
+# num_FSNs_group2_enrich      1 0.0000
+# num_FSNs_at_nonBSNs         1 0.0000
+# multinomial_p               1 0.0272
+# multinomial_corr            1 0.0544
 ```
 
-* `num_nodes_enriched`: Number of nodes with differential enrichment of the function in one subtree (the next three categories sum to this count)
-* `num_sig_nodes_group1_enrich`: Number of nodes where the function is enriched in the subtree that is relatively higher in group1 samples.
-* `num_sig_nodes_group2_enrich`: Number of nodes where the function is enriched in the subtree that is relatively higher in group2 samples.
-* `num_nonsig_nodes_enrich`: Number of nodes where the function is enriched and there is no difference in sample balances.
+* `num_FSNs`: Number of function-significant nodes (FSNs), i.e., nodes with differential enrichment of the function in one subtree (the next three categories sum to this count)
+* `num_FSNs_group1_enrich`: Number of FSNs where the function is enriched in the subtree that is relatively higher in group1 samples.
+* `num_FSNs_group2_enrich`: Number of FSNs where the function is enriched in the subtree that is relatively higher in group2 samples.
+* `num_FSNs_at_nonBSNs`: Number of FSNs where the function is enriched, but they do intersect with a BSN (i.e., there is no difference in sample balances).
 * `multinomial_p` and `multinomial_corr` P and corrected P-value (`BH` by default) based on multinomial test.
 
 The other default output elements in `POMS_out` are:
 * `balances_info`: Summary of the balance tree information, including the balances at each node and lists of the tip names within each subtree below each node.
-* `sig_nodes`: Nodes that are significantly different based on sample balances.
+* `sig_nodes`: Nodes that are significantly different based on sample balances (BSNs).
 * `multinomial_exp_prop`: Expected proportions of the three function enrichment categories based on the counts of significant nodes based on functions and balances.
