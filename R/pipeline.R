@@ -248,9 +248,9 @@ POMS_pipeline <- function(abun,
   
   multinomial_exp_prop <- c(prop_sig_node_balances * 0.5, prop_sig_node_balances * 0.5, 1 - prop_sig_node_balances)
   
-  names(multinomial_exp_prop) <- c("exp_sig_nodes_group1_enrich_prop",
-                                   "exp_sig_nodes_group2_enrich_prop",
-                                   "exp_nonsig_nodes_enrich_prop")
+  names(multinomial_exp_prop) <- c("exp_prop_FSNs_group1_enrich",
+                                   "exp_prop_FSNs_group2_enrich",
+                                   "exp_prop_FSNs_at_nonBSNs")
   
   summary_df$multinomial_p <- NA
   
