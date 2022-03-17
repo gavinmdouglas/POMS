@@ -23,3 +23,6 @@ Imports:
     phangorn (>= 2.0.0),
     stringr (>= 1.0.0),
     XNomial (>= 1.0.4)
+Suggests: 
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
