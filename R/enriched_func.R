@@ -42,8 +42,10 @@ feature_sets_func_fisher <- function(in_func, feature_set1, feature_set2, add_ps
   return(fisher_out)
 }
 
+
 node_func_fisher <- function(node, in_tree, in_func, higher_group, add_pseudocount=FALSE, multiple_test_corr="none") {
-  node_features <- lhs_rhs_asvs(in_tree, node, get_node_index=TRUE)
+  
+  node_features <- lhs_rhs_tips(in_tree, node, get_node_index=TRUE)
   
   if(higher_group == "group1") {
     node_fisher_tests <- feature_sets_func_fisher(in_func = in_func,

@@ -30,5 +30,5 @@ test_that("Two-group pipeline produces expected basic output with ex1 files", {
                                     multinomial_min_FSNs = 3,
                                     min_func_instances = 0)
 
-  expect_equal(ex1_basic_output$df, expected_df)
+  expect_equal(ex1_basic_output$summary, expected_df)
 })

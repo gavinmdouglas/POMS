@@ -37,13 +37,13 @@
 #' @param pseudocount Number added to all cells of "abun" table to avoid 0 values.
 #' Set this to be 0 if this is not desired, although there will be issues with the balance tree approach if any 0's are present.
 #'
-#' @param significant_nodes Optional vector of node names that match node labels of input phylogeny.
+#' @param manual_BSNs Optional vector of node names that match node labels of input phylogeny.
 #' These nodes will be considered the significant balance tree set, and the Wilcoxon tests will not be run.
 #' The group means of the balances at each node will still be used to determine which group has higher values.
-#' Note this requires that "tested_nodes" is also specified.
+#' Note this requires that "manual_tested_nodes" is also specified.
 #' 
-#' @param tested_nodes Optional vector of node names which represent all tested nodes that resulted in the input to the significant_nodes vector.
-#' I.e., this vector must include all names in the significant_nodes vector, but also all non-significant tested nodes as well.
+#' @param manual_tested_nodes Optional vector of node names which represent all tested nodes that resulted in the input to the manual_BSNs vector.
+#' I.e., this vector must include all names in the manual_BSNs vector, but also all non-significant tested nodes as well.
 #' 
 #' @param min_num_tips The minimum number of tips on each side of a node that is required that node to be retained for the analysis.
 #' Ignored if significant nodes are specified manually.
@@ -77,9 +77,9 @@
 #' @param verbose Boolean flag to indicate that log information should be written to the console, to help keep track of the pipeline's progress.
 #' 
 #' @return A list containing at minimum three elements:\cr\cr
-#' "summary_df" - a dataframe with each tested function as a row and the numbers of FSNs of each type as columns, as well as the multinomial test output.\cr\cr
-#' "balances_info" - a list of the sample balances at each node.\cr\cr
-#' "sig_nodes" - the labels of BSNs.\cr\cr
+#' "summary" - a dataframe with each tested function as a row and the numbers of FSNs of each type as columns, as well as the multinomial test output.\cr\cr
+#' "balances" - a list of the sample balances at each tested node (including non-significant nodes).\cr\cr
+#' "BSNs" - the balance-significant node labels.\cr\cr
 #' 
 #' @export
 POMS_pipeline <- function(abun,
@@ -89,8 +89,8 @@ POMS_pipeline <- function(abun,
                           group2_samples=NULL,
                           ncores=1,
                           pseudocount=1,
-                          significant_nodes=NULL,
-                          tested_nodes=NULL,
+                          manual_BSNs=NULL,
+                          manual_tested_nodes=NULL,
                           min_num_tips=10,
                           min_func_instances=10,
                           min_func_prop=0.001,
@@ -112,8 +112,8 @@ POMS_pipeline <- function(abun,
                                           group2_samples=group2_samples,
                                           ncores=ncores,
                                           pseudocount=pseudocount,
-                                          significant_nodes=significant_nodes,
-                                          tested_nodes=tested_nodes,
+                                          manual_BSNs=manual_BSNs,
+                                          manual_tested_nodes=manual_tested_nodes,
                                           min_num_tips=min_num_tips,
                                           min_func_instances=min_func_instances,
                                           min_func_prop=min_func_prop,
@@ -134,7 +134,7 @@ POMS_pipeline <- function(abun,
     func <- filter_rare_table_cols(func,  min_func_instances, min_func_prop, verbose)
   }
   
-  if (is.null(significant_nodes)) {
+  if (is.null(manual_BSNs)) {
     
     if (verbose) { message("Calculating balances.") }
     
@@ -167,25 +167,25 @@ POMS_pipeline <- function(abun,
                                                               corr_method=BSN_correction,
                                                               skip_wilcoxon=FALSE)
     
-    sig_nodes <- names(calculated_balances$balances)[which(pairwise_node_out$wilcox_corrected_p < BSN_p_cutoff)]
+    BSNs <- names(calculated_balances$balances)[which(pairwise_node_out$wilcox_corrected_p < BSN_p_cutoff)]
     
   } else {
     
-    sig_nodes <- significant_nodes
+    BSNs <- manual_BSNs
     
-    if (any(! sig_nodes %in% phylogeny$node.label)) { stop("Not all sig. nodes are not found in phylogeny.")}
+    if (any(! BSNs %in% phylogeny$node.label)) { stop("Not all sig. nodes are not found in phylogeny.")}
     
     calculated_balances <- list()
-    calculated_balances$balances <- tested_nodes
-    calculated_balances$features <- parallel::mclapply(names(tested_nodes),
-                                                       lhs_rhs_asvs,
+    calculated_balances$balances <- manual_tested_nodes
+    calculated_balances$features <- parallel::mclapply(names(manual_tested_nodes),
+                                                       lhs_rhs_tips,
                                                        tree=phylogeny,
                                                        get_node_index=TRUE,
                                                        mc.cores=ncores)
     
-    names(calculated_balances$features) <- names(tested_nodes)
+    names(calculated_balances$features) <- names(manual_tested_nodes)
     
-    negligible_nodes_i <- which(! names(phylogeny$node.label) %in% names(tested_nodes))
+    negligible_nodes_i <- which(! names(phylogeny$node.label) %in% names(manual_tested_nodes))
     if (length(negligible_nodes_i) > 0) {
       calculated_balances$negligible_nodes <- phylogeny$node.label[negligible_nodes_i]
     } else {
@@ -215,7 +215,7 @@ POMS_pipeline <- function(abun,
   
   if (verbose) { message("Summarizing significant functions across nodes.") }
   
-  func_summaries <- summarize_node_enrichment(all_balances_enriched_funcs, sig_nodes, FSN_p_cutoff)
+  func_summaries <- summarize_node_enrichment(all_balances_enriched_funcs, BSNs, FSN_p_cutoff)
   
   # Get single DF summarizing the key metrics and print this out.
   all_func_id <- c()
@@ -244,9 +244,9 @@ POMS_pipeline <- function(abun,
 
   if (verbose) { message("Running multinomial test on every function (that meets the multinomial_min_FSNs cut-off).") } 
   
-  prop_sig_node_balances <- length(sig_nodes) / length(calculated_balances$balances)
+  prop_tested_BSNs <- length(BSNs) / length(calculated_balances$balances)
   
-  multinomial_exp_prop <- c(prop_sig_node_balances * 0.5, prop_sig_node_balances * 0.5, 1 - prop_sig_node_balances)
+  multinomial_exp_prop <- c(prop_tested_BSNs * 0.5, prop_tested_BSNs * 0.5, 1 - prop_tested_BSNs)
   
   names(multinomial_exp_prop) <- c("exp_prop_FSNs_group1_enrich",
                                    "exp_prop_FSNs_group2_enrich",
@@ -258,20 +258,20 @@ POMS_pipeline <- function(abun,
     
       summary_df[func_id, c("num_FSNs_group1_enrich",
                             "num_FSNs_group2_enrich",
-                            "num_FSNs_at_nonBSNs")] <- c(length(func_summaries[[func_id]]$positive_nodes),
-                                                         length(func_summaries[[func_id]]$negative_nodes),
-                                                         length(func_summaries[[func_id]]$enriched_nonsig_nodes))
+                            "num_FSNs_at_nonBSNs")] <- c(length(func_summaries[[func_id]]$positively_linked_BSNs),
+                                                         length(func_summaries[[func_id]]$negatively_linked_BSNs),
+                                                         length(func_summaries[[func_id]]$enriched_nonBSNs))
       
       
       summary_df[func_id, "num_FSNs"] <- sum(as.numeric(summary_df[func_id, c("num_FSNs_group1_enrich",
                                                                               "num_FSNs_group2_enrich",
                                                                               "num_FSNs_at_nonBSNs")]))
           
-      all_nodes_present <- c(func_summaries[[func_id]]$nonenriched_sig_nodes,
-                             func_summaries[[func_id]]$positive_nodes,
-                             func_summaries[[func_id]]$negative_nodes,
-                             func_summaries[[func_id]]$nonenriched_nonsig_nodes,
-                             func_summaries[[func_id]]$enriched_nonsig_nodes)
+      all_nodes_present <- c(func_summaries[[func_id]]$nonenriched_BSNs,
+                             func_summaries[[func_id]]$positively_linked_BSNs,
+                             func_summaries[[func_id]]$negatively_linked_BSNs,
+                             func_summaries[[func_id]]$nonenriched_nonBSNs,
+                             func_summaries[[func_id]]$enriched_nonBSNs)
       
       if (max(table(all_nodes_present)) > 1) {
         stop("Node categorized into at least 2 mutually exclusive groups.")
@@ -281,7 +281,7 @@ POMS_pipeline <- function(abun,
                                                           "num_FSNs_group2_enrich",
                                                           "num_FSNs_at_nonBSNs")])
       
-      if ((length(sig_nodes) > 0) && (summary_df[func_id, "num_FSNs"] >= multinomial_min_FSNs) && (prop_sig_node_balances != 1)) {
+      if ((length(BSNs) > 0) && (summary_df[func_id, "num_FSNs"] >= multinomial_min_FSNs) && (prop_tested_BSNs != 1)) {
         summary_df[func_id, "multinomial_p"] <- XNomial::xmulti(obs=observed_counts,
                                                                 expr=multinomial_exp_prop, detail=0)$pProb 
       }
@@ -300,15 +300,15 @@ POMS_pipeline <- function(abun,
     if (verbose) { message("Function description mapfile not specified (func_descrip_infile argument), so no descriptions will be added.") } 
   }
   
-  results <- list(balances_info=calculated_balances,
-                  sig_nodes=sig_nodes,
-                  df=summary_df)
+  results <- list(summary=summary_df,
+                  BSNs=BSNs,
+                  balances=calculated_balances)
   
   results[["multinomial_exp_prop"]] <- multinomial_exp_prop
   
   if (detailed_output) {
       # Restrict vector of mean directions to significant nodes only to avoid confusion.
-      pairwise_node_out$mean_direction <- pairwise_node_out$mean_direction[sig_nodes]
+      pairwise_node_out$mean_direction <- pairwise_node_out$mean_direction[BSNs]
 
       results[["balance_comparisons"]] <- pairwise_node_out
       results[["funcs_per_node"]] <- all_balances_enriched_funcs
@@ -329,8 +329,8 @@ check_POMS_pipeline_args <- function(abun,
                                      group2_samples,
                                      ncores,
                                      pseudocount,
-                                     significant_nodes,
-                                     tested_nodes,
+                                     manual_BSNs,
+                                     manual_tested_nodes,
                                      min_num_tips,
                                      min_func_instances,
                                      min_func_prop,
@@ -344,15 +344,15 @@ check_POMS_pipeline_args <- function(abun,
                                      detailed_output,
                                      verbose) {
 
-  if (((is.null(significant_nodes)) && (! is.null(tested_nodes))) || ((! is.null(significant_nodes)) && (is.null(tested_nodes)))) {
-    stop("Stopping - arguments significant_nodes and tested_nodes either both need to be given or neither should be specified.")
+  if (((is.null(manual_BSNs)) && (! is.null(manual_tested_nodes))) || ((! is.null(manual_BSNs)) && (is.null(manual_tested_nodes)))) {
+    stop("Stopping - arguments manual_BSNs and manual_tested_nodes either both need to be given or neither should be specified.")
   }
 
-  if ((! is.null(significant_nodes)) && (length(significant_nodes) == 0)) { stop("Stopping - vector specified for significant_nodes argument is empty.") }
+  if ((! is.null(manual_BSNs)) && (length(manual_BSNs) == 0)) { stop("Stopping - vector specified for manual_BSNs argument is empty.") }
 
-  if ((! is.null(significant_nodes)) && (! is.null(tested_nodes))) {
-    if (length(which(significant_nodes %in% tested_nodes)) != length(significant_nodes)) {
-      stop("Stopping - not all nodes in significant_nodes vector are in in tested_nodes") 
+  if ((! is.null(manual_BSNs)) && (! is.null(manual_tested_nodes))) {
+    if (length(which(manual_BSNs %in% manual_tested_nodes)) != length(manual_BSNs)) {
+      stop("Stopping - not all nodes in manual_BSNs vector are in in manual_tested_nodes") 
     }
   }
   
@@ -399,7 +399,7 @@ check_POMS_pipeline_args <- function(abun,
               group2_samples=group2_samples,
               ncores=ncores,
               pseudocount=pseudocount,
-              significant_nodes=significant_nodes,
+              manual_BSNs=manual_BSNs,
               min_num_tips=min_num_tips,
               min_func_instances=min_func_instances,
               min_func_prop=min_func_prop,
@@ -415,12 +415,11 @@ check_POMS_pipeline_args <- function(abun,
 }
 
 
-summarize_node_enrichment <- function(enriched_funcs, sig_nodes, func_p_cutoff) {
+summarize_node_enrichment <- function(enriched_funcs, identified_BSNs, func_p_cutoff) {
   # For each function that is significant at least once get:
-  #   - Names of significant nodes where the function is present.
-  #   - Names of positively and negatively enriched significant nodes
-  #   - Names of nonsignificant nodes where the function would have been significant.
-  #   - Names of nonsignificant nodes where the function was present.
+  #   - Names of BSNs where the function is present.
+  #   - Names of positively and negatively enriched significant nodes (with respect to BSN direction)
+  #   - Names of non-BSNs where the function was significant.
 
   # First get all unique functions.
   all_func_id <- c()
@@ -437,48 +436,41 @@ summarize_node_enrichment <- function(enriched_funcs, sig_nodes, func_p_cutoff) 
   # Loop through each function and get breakdown of contributing node names.
   for (func_id in all_func_id) {
 
-    func_summaries[[func_id]]$positive_nodes <- c()
-    func_summaries[[func_id]]$negative_nodes <- c()
-    func_summaries[[func_id]]$nonenriched_sig_nodes <- c()
-    func_summaries[[func_id]]$nonenriched_nonsig_nodes <- c()
-    func_summaries[[func_id]]$enriched_nonsig_nodes <- c()
-    func_summaries[[func_id]]$missing_sig_nodes <- c()
-    func_summaries[[func_id]]$missing_nonsig_nodes <- c()
+    func_summaries[[func_id]]$positively_linked_nodes <- c()
+    func_summaries[[func_id]]$negatively_linked_nodes <- c()
+    func_summaries[[func_id]]$nonenriched_BSNs <- c()
+    func_summaries[[func_id]]$nonenriched_nonBSNs <- c()
+    func_summaries[[func_id]]$enriched_nonBSNs <- c()
 
     for (node in names(enriched_funcs)) {
       if (func_id %in% rownames(enriched_funcs[[node]])) {
 
-        if (node %in% sig_nodes) {
+        if (node %in% identified_BSNs) {
           # If this node was significant then categorize it as either positive, negative, or nonenriched.
           if (as.numeric(enriched_funcs[[node]][func_id, "P_corr"]) < func_p_cutoff) {
 
             if (as.numeric(enriched_funcs[[node]][func_id, "OR"]) > 1) {
-              func_summaries[[func_id]]$positive_nodes <- c(func_summaries[[func_id]]$positive_nodes, node)
+              func_summaries[[func_id]]$positively_linked_nodes <- c(func_summaries[[func_id]]$positively_linked_nodes, node)
             } else if (as.numeric(enriched_funcs[[node]][func_id, "OR"]) < 1) {
-              func_summaries[[func_id]]$negative_nodes <- c(func_summaries[[func_id]]$negative_nodes, node)
+              func_summaries[[func_id]]$negatively_linked_nodes <- c(func_summaries[[func_id]]$negatively_linked_nodes, node)
             } else {
               print(enriched_funcs[[node]][func_id, ])
               stop("Significant function but OR for above info not different from 1?!")
             }
           } else {
-            func_summaries[[func_id]]$nonenriched_sig_nodes <- c(func_summaries[[func_id]]$nonenriched_sig_nodes, node)
+            func_summaries[[func_id]]$nonenriched_BSNs <- c(func_summaries[[func_id]]$nonenriched_BSNs, node)
           }
         } else {
           # Since this node was NOT significant then categorize it as either enriched or nonenriched.
           if (as.numeric(enriched_funcs[[node]][func_id, "P_corr"]) < func_p_cutoff) {
-            func_summaries[[func_id]]$enriched_nonsig_nodes <- c(func_summaries[[func_id]]$enriched_nonsig_nodes, node)
+            func_summaries[[func_id]]$enriched_nonBSNs <- c(func_summaries[[func_id]]$enriched_nonBSNs, node)
           } else {
-            func_summaries[[func_id]]$nonenriched_nonsig_nodes <- c(func_summaries[[func_id]]$nonenriched_nonsig_nodes, node)
+            func_summaries[[func_id]]$nonenriched_nonBSNs <- c(func_summaries[[func_id]]$nonenriched_nonBSNs, node)
           }
-        }
-      } else {
-        if (node %in% sig_nodes) {
-          func_summaries[[func_id]]$missing_sig_nodes <- c(func_summaries[[func_id]]$missing_sig_nodes, node)
-        } else {
-          func_summaries[[func_id]]$missing_nonsig_nodes <- c(func_summaries[[func_id]]$missing_nonsig_nodes, node)
         }
       }
     }
   }
+
   return(func_summaries)
 }
