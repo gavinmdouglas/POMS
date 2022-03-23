@@ -239,8 +239,6 @@ POMS_pipeline <- function(abun,
                             "num_FSNs_at_nonBSNs")
   
   rownames(summary_df) <- all_func_id
-  
-  if (verbose) { message("Creating results dataframe.") }
 
   if (verbose) { message("Running multinomial test on every function (that meets the multinomial_min_FSNs cut-off).") } 
   
@@ -436,8 +434,8 @@ summarize_node_enrichment <- function(enriched_funcs, identified_BSNs, func_p_cu
   # Loop through each function and get breakdown of contributing node names.
   for (func_id in all_func_id) {
 
-    func_summaries[[func_id]]$positively_linked_nodes <- c()
-    func_summaries[[func_id]]$negatively_linked_nodes <- c()
+    func_summaries[[func_id]]$positively_linked_BSNs <- c()
+    func_summaries[[func_id]]$negatively_linked_BSNs <- c()
     func_summaries[[func_id]]$nonenriched_BSNs <- c()
     func_summaries[[func_id]]$nonenriched_nonBSNs <- c()
     func_summaries[[func_id]]$enriched_nonBSNs <- c()
@@ -450,9 +448,9 @@ summarize_node_enrichment <- function(enriched_funcs, identified_BSNs, func_p_cu
           if (as.numeric(enriched_funcs[[node]][func_id, "P_corr"]) < func_p_cutoff) {
 
             if (as.numeric(enriched_funcs[[node]][func_id, "OR"]) > 1) {
-              func_summaries[[func_id]]$positively_linked_nodes <- c(func_summaries[[func_id]]$positively_linked_nodes, node)
+              func_summaries[[func_id]]$positively_linked_BSNs <- c(func_summaries[[func_id]]$positively_linked_BSNs, node)
             } else if (as.numeric(enriched_funcs[[node]][func_id, "OR"]) < 1) {
-              func_summaries[[func_id]]$negatively_linked_nodes <- c(func_summaries[[func_id]]$negatively_linked_nodes, node)
+              func_summaries[[func_id]]$negatively_linked_BSNs <- c(func_summaries[[func_id]]$negatively_linked_BSNs, node)
             } else {
               print(enriched_funcs[[node]][func_id, ])
               stop("Significant function but OR for above info not different from 1?!")
