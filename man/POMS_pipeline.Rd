@@ -12,8 +12,8 @@ POMS_pipeline(
   group2_samples = NULL,
   ncores = 1,
   pseudocount = 1,
-  significant_nodes = NULL,
-  tested_nodes = NULL,
+  manual_BSNs = NULL,
+  manual_tested_nodes = NULL,
   min_num_tips = 10,
   min_func_instances = 10,
   min_func_prop = 0.001,
@@ -49,13 +49,13 @@ This grouping is used for testing for significant sample balances at each node.}
 \item{pseudocount}{Number added to all cells of "abun" table to avoid 0 values.
 Set this to be 0 if this is not desired, although there will be issues with the balance tree approach if any 0's are present.}
 
-\item{significant_nodes}{Optional vector of node names that match node labels of input phylogeny.
+\item{manual_BSNs}{Optional vector of node names that match node labels of input phylogeny.
 These nodes will be considered the significant balance tree set, and the Wilcoxon tests will not be run.
 The group means of the balances at each node will still be used to determine which group has higher values.
-Note this requires that "tested_nodes" is also specified.}
+Note this requires that "manual_tested_nodes" is also specified.}
 
-\item{tested_nodes}{Optional vector of node names which represent all tested nodes that resulted in the input to the significant_nodes vector.
-I.e., this vector must include all names in the significant_nodes vector, but also all non-significant tested nodes as well.}
+\item{manual_tested_nodes}{Optional vector of node names which represent all tested nodes that resulted in the input to the manual_BSNs vector.
+I.e., this vector must include all names in the manual_BSNs vector, but also all non-significant tested nodes as well.}
 
 \item{min_num_tips}{The minimum number of tips on each side of a node that is required that node to be retained for the analysis.
 Ignored if significant nodes are specified manually.}
@@ -90,9 +90,9 @@ This is useful when troubleshooting issues, but is not expected to be useful for
 }
 \value{
 A list containing at minimum three elements:\cr\cr
-"summary_df" - a dataframe with each tested function as a row and the numbers of FSNs of each type as columns, as well as the multinomial test output.\cr\cr
-"balances_info" - a list of the sample balances at each node.\cr\cr
-"sig_nodes" - the labels of BSNs.\cr\cr
+"summary" - a dataframe with each tested function as a row and the numbers of FSNs of each type as columns, as well as the multinomial test output.\cr\cr
+"balances" - a list of the sample balances at each tested node (including non-significant nodes).\cr\cr
+"BSNs" - the balance-significant node labels.\cr\cr
 }
 \description{
 Key function to run POMS pipeline.\cr

@@ -4,10 +4,13 @@ library(POMS)
 
 ex1_taxa_abun <- read.table("../../example_files/ex_taxa_abun.tsv.gz", header = TRUE, sep = "\t", row.names = 1)
 ex1_func <- read.table("../../example_files/ex_func.tsv.gz", header = TRUE, sep = "\t", row.names = 1)
-ex1_tree <- read.tree("../../example_files/ex_tree.newick")
+
 ex1_group1 <- read.table("../../example_files/ex_group1.txt.gz", stringsAsFactors = FALSE)$V1
 ex1_group2 <- read.table("../../example_files/ex_group2.txt.gz", stringsAsFactors = FALSE)$V1
 
+ex1_tree <- ape::read.tree("../../example_files/ex_tree.newick")
+ex1_tree_w_label <- ex1_tree
+ex1_tree$node.label <- NULL
 
 # Example of how to run main POMS function. 
 test_that("Two-group pipeline produces expected basic output with ex1 files", {

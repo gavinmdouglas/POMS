@@ -28,7 +28,7 @@
 #' Specifically, when TRUE, all higher labels are concatenated and delimited by "; ".
 #' E.g., rather than just the genus "Odoribacter" the label would be "Bacteria; Bacteroidetes; Bacteroidia; Bacteroidales; Porphyromonadaceae; Odoribacter".
 #'
-#' @return Character string of representative taxon of tips underlying the specified node, delimited by " / ".
+#' @return Character vector of size two with the representative taxon for tips on each side of the specified node.
 #' 
 #' @export
 node_taxa <- function(in_tree, taxon_labels, node_label=NULL, node_index=NULL, threshold=0.75, combine_labels = TRUE) {
@@ -57,7 +57,7 @@ node_taxa <- function(in_tree, taxon_labels, node_label=NULL, node_index=NULL, t
   taxon_lhs <- feature_consensus_taxon(taxon_labels, underlying_tips$lhs, threshold, combine_labels)
   taxon_rhs <- feature_consensus_taxon(taxon_labels, underlying_tips$rhs, threshold, combine_labels)
   
-  return(paste(taxon_lhs, taxon_rhs, sep=" / "))
+  return(c(taxon_lhs, taxon_rhs))
 
 }
 
@@ -171,7 +171,7 @@ compute_tree_node_balances <- function(phylogeny, abun, min_num_tips, ncores=1, 
   
   nonnegligible_nodes_i <- which(! names(node_features) %in% negligible_nodes)
   
-  if(length(nonnegligible_nodes_i) > 0) {
+  if (length(nonnegligible_nodes_i) > 0) {
     nonnegligible_nodes <- names(node_features)[nonnegligible_nodes_i]
     
     # Calculate balances at each node.
@@ -193,25 +193,6 @@ compute_tree_node_balances <- function(phylogeny, abun, min_num_tips, ncores=1, 
   
   return(list(features=node_features, balances=balance_calc, negligible_nodes=negligible_nodes))
   
-}
-
-
-feature_consensus_taxon_OLD <- function(taxa, features, threshold) {
-  
-  taxa_subset <- taxa[features, ]
-  
-  for(i in ncol(taxa_subset):1) {
-    
-    taxa_subset_table <- table(taxa_subset[, i, drop=TRUE])
-    
-    if(length(taxa_subset_table) == 0) { next }
-    
-    if((max(taxa_subset_table) / length(features)) >= threshold) {
-      return(paste(names(taxa_subset_table)[which(taxa_subset_table == max(taxa_subset_table))], " ", "(", colnames(taxa_subset)[i], ")", sep=""))
-    }
-  }
-  
-  return("Unclear")
 }
 
 
