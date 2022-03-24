@@ -62,37 +62,67 @@ node_taxa <- function(in_tree, taxon_labels, node_label=NULL, node_index=NULL, t
 }
 
 
+#' Will compute isometric log ratio between two sets of feature abundances, for each sample separately. Requires an abundance table,
+#' with two sets of features for which the ratio will be computed. 
+#'
+#' @param abun_table Abundance table, e.g., read counts or relative abundance.
+#' Should be dataframe with column names correspond to sample names and row names corresponding to the feature ids.
+#' No 0 values are permitted unless the "pseudocount" option is set.
+#'
+#' @param set1_features Features (rows of abundance table) that make up one side of the ratio to be computed (numerator).
+#' 
+#' @param set2_features Same as "set1_features", but for the other side of the ratio (denominator).
+#' 
+#' @param pseudocount Constant to add to all abundance values, to ensure that there are only non-zero values. For read count data this would typically be 1.
+#' 
+#' @return Numeric vector of the computed isometric log ratio for each sample (taken to be each column in the input table).
+#' 
 #' @export
-calc_balances <- function(abun_table, lhs_features, rhs_features, pseudocount=NULL) {
+abun_isometric_log_ratios <- function(abun_table, set1_features, set2_features, pseudocount=NULL) {
+  
+  num_set1 <- length(set1_features)
+  num_set2 <- length(set2_features)
+  
+  if (num_set1 == 0 | num_set2 == 0) {
+    stop("At least one feature must be specified in each set.")
+  }
+  
+  # Check that features are in table.
+  if (length(which(! c(set1_features, set2_features) %in% rownames(abun_table))) > 0) {
+    stop("Stopping - at least one feature in the specified sets is not present as a row name in the abundance table.") 
+  }
+  
+  abun_table <- abun_table[c(set1_features, set2_features), ]
   
   if (pseudocount) {
     abun_table <- abun_table + pseudocount
   }
   
-  num_lhs <- length(lhs_features)
-  num_rhs <- length(rhs_features)
+  if (length(which(abun_table == 0)) > 0) {
+    stop("At least one 0 is present in the abundance table, which means that at least some isometric log ratios cannot be computed. Fix this by setting (or changing) the \"pseudocount\" option.")
+  }
   
-  half1 <- sqrt((num_lhs * num_rhs) / (num_lhs + num_rhs))
+  half1 <- sqrt((num_set1 * num_set2) / (num_set1 + num_set2))
   
-  sample_col <- colnames(abun_table)
+  sample_names <- colnames(abun_table)
   
   half2 <- c()
   
-  for(sample in sample_col) {
-    sample_lhs_values <- abun_table[lhs_features, sample]
-    sample_rhs_values <- abun_table[rhs_features, sample]
+  for(sample in sample_names) {
+    sample_set1_values <- abun_table[set1_features, sample]
+    sample_set2_values <- abun_table[set2_features, sample]
     
-    gmean_lhs <- exp(mean(log(sample_lhs_values)))
-    gmean_rhs <- exp(mean(log(sample_rhs_values)))
+    gmean_set1 <- exp(mean(log(sample_set1_values)))
+    gmean_set2 <- exp(mean(log(sample_set2_values)))
     
-    half2 <- c(half2, log(gmean_lhs / gmean_rhs))
+    half2 <- c(half2, log(gmean_set1 / gmean_set2))
   }
   
-  balances_out <- half1 * half2
+  ilr_out <- half1 * half2
   
-  names(balances_out) <- sample_col
+  names(ilr_out) <- sample_names
   
-  return(balances_out)
+  return(ilr_out)
 
 }
 
@@ -125,7 +155,7 @@ feature_consensus_taxon <- function(taxa, features, threshold, combine_labels = 
 
 
 #' @export
-compute_tree_node_balances <- function(phylogeny, abun, min_num_tips, ncores=1, pseudocount=1, subset2test=NULL) {
+compute_node_balances <- function(phylogeny, abun, min_num_tips, ncores=1, pseudocount=1, subset2test=NULL) {
   
   ### Function to perform isomatric log-ratio transformation of feature abundances at each node in the tree.
   ### Will return a list containing the features on the left-hand side (lhs) and right-hand side (rhs) of each
@@ -177,10 +207,10 @@ compute_tree_node_balances <- function(phylogeny, abun, min_num_tips, ncores=1, 
     # Calculate balances at each node.
     balance_calc <- parallel::mclapply(nonnegligible_nodes,
                              function(x) {
-                               return(calc_balances(abun_table=abun,
-                                                    lhs_features=node_features[[x]]$lhs,
-                                                    rhs_features=node_features[[x]]$rhs,
-                                                    pseudocount=pseudocount))
+                               return(abun_isometric_log_ratios(abun_table=abun,
+                                                                set1_features=node_features[[x]]$lhs,
+                                                                set2_features=node_features[[x]]$rhs,
+                                                                pseudocount=pseudocount))
                              },
                              mc.cores=ncores)
     

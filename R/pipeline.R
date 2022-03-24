@@ -146,11 +146,11 @@ POMS_pipeline <- function(abun,
        message("MAKE SURE TO USE A LOWER PSEUDOCOUNT VALUE IF THE INPUT TABLE IS PROPORTIONAL/PERCENTAGE DATA.")
     }
     
-    calculated_balances <- compute_tree_node_balances(abun=abun,
-                                                      phylogeny=phylogeny,
-                                                      ncores=ncores,
-                                                      min_num_tips = min_num_tips,
-                                                      pseudocount=pseudocount)
+    calculated_balances <- compute_node_balances(abun=abun,
+                                                 phylogeny=phylogeny,
+                                                 ncores=ncores,
+                                                 min_num_tips = min_num_tips,
+                                                 pseudocount=pseudocount)
     
     if (length(calculated_balances$balances) == 0) {
       message("Cannot run POMS workflow because no nodes are non-negligible based on specified settings.")
