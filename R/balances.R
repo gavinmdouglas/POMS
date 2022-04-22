@@ -62,7 +62,7 @@ node_taxa <- function(in_tree, taxon_labels, node_label=NULL, node_index=NULL, t
 }
 
 
-#' Will compute isometric log ratio between two sets of feature abundances, for each sample separately. Requires an abundance table,
+#' Computes isometric log ratio between two sets of feature abundances, for each sample separately. Requires an abundance table,
 #' with two sets of features for which the ratio will be computed. 
 #'
 #' @param abun_table Abundance table, e.g., read counts or relative abundance.
@@ -92,9 +92,14 @@ abun_isometric_log_ratios <- function(abun_table, set1_features, set2_features, 
     stop("Stopping - at least one feature in the specified sets is not present as a row name in the abundance table.") 
   }
   
+  # Check that no features intersect.
+  if (length(which(set1_features %in% set2_features)) > 0) {
+    stop("Stopping - at least one feature overlaps between the input sets.") 
+  }
+  
   abun_table <- abun_table[c(set1_features, set2_features), ]
   
-  if (pseudocount) {
+  if (! is.null(pseudocount)) {
     abun_table <- abun_table + pseudocount
   }
   
@@ -127,6 +132,106 @@ abun_isometric_log_ratios <- function(abun_table, set1_features, set2_features, 
 }
 
 
+#' Computes balances (i.e., isometric log ratios, for each sample separately) of feature abundances at each node in the tree.
+#' 
+#' @param phylogeny Phylo object with tip labels matching row names of input abundance table. Note that node labels are required.
+#'
+#' @param abun_table Abundance table, e.g., read counts or relative abundance.
+#' Should be dataframe with column names correspond to sample names and row names corresponding to the tips of the tree.
+#' No 0 values are permitted unless the "pseudocount" option is set.
+#' 
+#' @param min_num_tips Minimum number of tips that must be found on each side of a node for it to be included.
+#'
+#' @param ncores Number of cores to use for steps of function that can be run in parallel.
+#'
+#' @param pseudocount Constant to add to all abundance values, to ensure that there are only non-zero values. For read count data this would typically be 1.
+#'
+#' @param subset_to_test Vector of node labels (*not indices*) that correspond to the subset of nodes that should be considered.
+#' Note that balances will still only be computed at each of these nodes if they have a sufficient number of underlying tips (as specified by the "min_num_tips" argument).
+#'
+#' @return List containing three items:
+#' 
+#' "tips_underlying_nodes": the tips on the left-hand side (lhs; the numerator) and right-hand side (rhs; the denominator) of each node.
+#' Note that which side of the node is denoted as the left-hand or right-hand side is arbitrary.
+#' 
+#' "balances": list with each non-negligible nodes as a separate element. The sample balances for each node are provided as a numeric vector within each of these elements.
+#'  
+#' "negligible_nodes": character vector of node labels where there are fewer tips on either side of the node than specified by the "min_num_tips" argument.
+#' 
+#' @export
+compute_node_balances <- function(phylogeny, abun_table, min_num_tips=5, ncores=1, pseudocount=NULL, subset_to_test=NULL) {
+  
+  if (is.null(phylogeny$node.label)) {
+    stop("Stopping - input tree does not have any node labels.") 
+  }
+  
+  if (! all(phylogeny$tip.label %in% rownames(abun_table))) {
+    stop("Stopping - not all tips are found as row names in the abundance table.")
+  }
+  
+  # Test all nodes unless subset specified.  
+  if(! is.null(subset_to_test)) {
+    if (length(which(! subset_to_test %in% phylogeny$node.label)) > 0) {
+      stop("Stopping - some labels in subset_to_test do not match node labels in the tree.")  
+    }
+    nodes_to_test <- subset_to_test
+  } else {
+    nodes_to_test <- phylogeny$node.label
+  }
+  
+  # Get tips on either side of each node.
+  node_features <- parallel::mclapply(nodes_to_test,
+                                      lhs_rhs_tips,
+                                      tree=phylogeny,
+                                      get_node_index=TRUE,
+                                      mc.cores=ncores)
+  
+  names(node_features) <- nodes_to_test
+  
+  negligible_nodes <- sapply(names(node_features),
+                             function(x) {
+                               lhs_feat_num <- length(node_features[[x]]$lhs)
+                               rhs_feat_num <- length(node_features[[x]]$rhs)
+                               if((lhs_feat_num < min_num_tips) || (rhs_feat_num < min_num_tips)) {
+                                 return(TRUE)
+                               } else {
+                                 return(FALSE) 
+                               }
+                             })
+  
+  negligible_nodes_i <- which(negligible_nodes)
+  if(length(negligible_nodes_i) > 0) {
+    negligible_nodes <- names(negligible_nodes[negligible_nodes_i])
+  } else {
+    negligible_nodes <- as.character()
+  }
+  
+  nonnegligible_nodes_i <- which(! names(node_features) %in% negligible_nodes)
+  
+  if (length(nonnegligible_nodes_i) > 0) {
+    nonnegligible_nodes <- names(node_features)[nonnegligible_nodes_i]
+    
+    # Calculate balances at each node.
+    balance_calc <- parallel::mclapply(nonnegligible_nodes,
+                                       function(x) {
+                                         return(abun_isometric_log_ratios(abun_table=abun_table,
+                                                                          set1_features=node_features[[x]]$lhs,
+                                                                          set2_features=node_features[[x]]$rhs,
+                                                                          pseudocount=pseudocount))
+                                       },
+                                       mc.cores=ncores)
+    
+    names(balance_calc) <- nonnegligible_nodes
+    
+  } else {
+    stop("Stopping - no non-negligible nodes remain after filtering based on mininum number of tips of left and right-hand side of each node.")
+  }
+  
+  return(list(tips_underlying_nodes=node_features, balances=balance_calc, negligible_nodes=negligible_nodes))
+  
+}
+
+
 feature_consensus_taxon <- function(taxa, features, threshold, combine_labels = FALSE) {
 
   taxa_subset <- taxa[features, ]
@@ -153,77 +258,6 @@ feature_consensus_taxon <- function(taxa, features, threshold, combine_labels = 
   return("Unclear")
 }
 
-
-#' @export
-compute_node_balances <- function(phylogeny, abun, min_num_tips, ncores=1, pseudocount=1, subset2test=NULL) {
-  
-  ### Function to perform isomatric log-ratio transformation of feature abundances at each node in the tree.
-  ### Will return a list containing the features on the left-hand side (lhs) and right-hand side (rhs) of each
-  ### node in a tree ("features") and also the computed balances ("balances").
-  
-  if(is.null(phylogeny$node.label)) {
-    stop("Stopping - input tree does not have any node labels.") 
-  }
-  
-  # Test all nodes unless subset specified.  
-  if(! is.null(subset2test)) {
-    nodes2test <- subset2test
-  } else {
-    nodes2test <- phylogeny$node.label
-  }
-  
-  # Get tips on either side of each node.
-  node_features <- parallel::mclapply(nodes2test,
-                                      lhs_rhs_tips,
-                                      tree=phylogeny,
-                                      get_node_index=TRUE,
-                                      mc.cores=ncores)
-  
-  names(node_features) <- nodes2test
-  
-  negligible_nodes <- sapply(names(node_features),
-                             function(x) {
-                               lhs_feat_num <- length(node_features[[x]]$lhs)
-                               rhs_feat_num <- length(node_features[[x]]$rhs)
-                               if((lhs_feat_num < min_num_tips) || (rhs_feat_num < min_num_tips)) {
-                                 return(TRUE)
-                               } else {
-                                 return(FALSE) 
-                               }
-                             })
-  
-  negligible_nodes_i <- which(negligible_nodes)
-  if(length(negligible_nodes_i) > 0) {
-    negligible_nodes <- names(negligible_nodes[negligible_nodes_i])
-  } else {
-    negligible_nodes <- c()
-  }
-  
-  nonnegligible_nodes_i <- which(! names(node_features) %in% negligible_nodes)
-  
-  if (length(nonnegligible_nodes_i) > 0) {
-    nonnegligible_nodes <- names(node_features)[nonnegligible_nodes_i]
-    
-    # Calculate balances at each node.
-    balance_calc <- parallel::mclapply(nonnegligible_nodes,
-                             function(x) {
-                               return(abun_isometric_log_ratios(abun_table=abun,
-                                                                set1_features=node_features[[x]]$lhs,
-                                                                set2_features=node_features[[x]]$rhs,
-                                                                pseudocount=pseudocount))
-                             },
-                             mc.cores=ncores)
-    
-    names(balance_calc) <- nonnegligible_nodes
-
-  } else {
-    balance_calc <- NULL
-    message("Skipping balance calculation, because no non-negligible nodes remain after filtering based on mininum number of tips of left and right-hand side of each node.")
-  }
-  
-  return(list(features=node_features, balances=balance_calc, negligible_nodes=negligible_nodes))
-  
-}
 
 
 lhs_rhs_tips <- function(tree, node, get_node_index=FALSE) {

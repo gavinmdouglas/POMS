@@ -46,7 +46,7 @@ prep_tree <- function(phy, tips2keep) {
   # Function to subset tree to tips of MAGs only
   # and run sanity checks.
   # Will midpoint root tree if necessary.
-  # Add node labels to tree before returning.
+  # Add node labels to tree before returning (unless they are already present).
   
   tips2remove <- phy$tip.label[which(! phy$tip.label %in% tips2keep)]
   
@@ -60,8 +60,10 @@ prep_tree <- function(phy, tips2keep) {
     phy <- phangorn::midpoint(phy)
   }
   
-  phy$node.label <- NULL
-  phy <- ape::makeNodeLabel(phy, method="number", prefix='n')
+  if (! "node.label" %in% names(phy)) {
+    phy$node.label <- NULL
+    phy <- ape::makeNodeLabel(phy, method="number", prefix='n')
+  }
   
   return(phy)
 }
