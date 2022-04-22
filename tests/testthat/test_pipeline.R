@@ -2,15 +2,15 @@
 
 library(POMS)
 
-ex1_taxa_abun <- read.table("../../example_files/ex_taxa_abun.tsv.gz", header = TRUE, sep = "\t", row.names = 1)
-ex1_func <- read.table("../../example_files/ex_func.tsv.gz", header = TRUE, sep = "\t", row.names = 1)
+ex_taxa_abun <- read.table("../../example_files/ex_taxa_abun.tsv.gz", header = TRUE, sep = "\t", row.names = 1)
+ex_func <- read.table("../../example_files/ex_func.tsv.gz", header = TRUE, sep = "\t", row.names = 1)
 
-ex1_group1 <- read.table("../../example_files/ex_group1.txt.gz", stringsAsFactors = FALSE)$V1
-ex1_group2 <- read.table("../../example_files/ex_group2.txt.gz", stringsAsFactors = FALSE)$V1
+ex_group1 <- read.table("../../example_files/ex_group1.txt.gz", stringsAsFactors = FALSE)$V1
+ex_group2 <- read.table("../../example_files/ex_group2.txt.gz", stringsAsFactors = FALSE)$V1
 
-ex1_tree <- ape::read.tree("../../example_files/ex_tree.newick")
-ex1_tree_w_label <- ex1_tree
-ex1_tree$node.label <- NULL
+ex_tree <- ape::read.tree("../../example_files/ex_tree.newick")
+ex_tree_w_label <- ex_tree
+ex_tree$node.label <- NULL
 
 # Example of how to run main POMS function. 
 test_that("Two-group pipeline produces expected basic output with ex1 files", {
@@ -23,15 +23,34 @@ test_that("Two-group pipeline produces expected basic output with ex1 files", {
                             multinomial_corr = c(1, 0.0544))
   rownames(expected_df) <- c("K07106", "K02036")
   
-  ex1_basic_output <- POMS_pipeline(abun = ex1_taxa_abun,
-                                    func = ex1_func,
-                                    phylogeny = ex1_tree,
-                                    group1_samples = ex1_group1,
-                                    group2_samples = ex1_group2,
+  ex_basic_output <- POMS_pipeline(abun = ex_taxa_abun,
+                                    func = ex_func,
+                                    phylogeny = ex_tree,
+                                    group1_samples = ex_group1,
+                                    group2_samples = ex_group2,
                                     ncores = 1,
                                     min_num_tips = 4,
                                     multinomial_min_FSNs = 3,
                                     min_func_instances = 0)
 
-  expect_equal(ex1_basic_output$summary, expected_df)
+  expect_equal(ex_basic_output$results, expected_df)
+})
+
+
+
+# Check that error thrown when significant nodes input is not a subset of tested nodes.
+test_that("Correct error when significant nodes are not subset of tested nodes.", {
+  
+  expect_error(object = POMS_pipeline(abun = ex_taxa_abun,
+                                      func = ex_func,
+                                      phylogeny = ex_tree,
+                                      group1_samples = ex_group1,
+                                      group2_samples = ex_group2,
+                                      ncores = 1,
+                                      min_num_tips = 4,
+                                      multinomial_min_FSNs = 3,
+                                      min_func_instances = 0,
+                                      manual_BSNs = c("test1", "test2"),
+                                      manual_balances = list(balances=list("a"=as.numeric(), "b"=as.numeric(), "c"=as.numeric())),
+               regexp = "Stopping - not all nodes in manual_BSNs vector are in in manual_balances"))
 })

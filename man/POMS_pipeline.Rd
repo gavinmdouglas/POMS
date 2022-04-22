@@ -13,7 +13,7 @@ POMS_pipeline(
   ncores = 1,
   pseudocount = 1,
   manual_BSNs = NULL,
-  manual_tested_nodes = NULL,
+  manual_balances = NULL,
   min_num_tips = 10,
   min_func_instances = 10,
   min_func_prop = 0.001,
@@ -52,10 +52,12 @@ Set this to be 0 if this is not desired, although there will be issues with the 
 \item{manual_BSNs}{Optional vector of node names that match node labels of input phylogeny.
 These nodes will be considered the significant balance tree set, and the Wilcoxon tests will not be run.
 The group means of the balances at each node will still be used to determine which group has higher values.
-Note this requires that "manual_tested_nodes" is also specified.}
+Note this requires that "manual_balances" is also specified.}
 
-\item{manual_tested_nodes}{Optional vector of node names which represent all tested nodes that resulted in the input to the manual_BSNs vector.
-I.e., this vector must include all names in the manual_BSNs vector, but also all non-significant tested nodes as well.}
+\item{manual_balances}{Optional list of balance values which represent the balances at all tested nodes that resulted in the input to the manual_BSNs vector.
+This list must include balances for all nodes in the manual_BSNs vector, but also all non-significant tested nodes as well.
+These node labels must all be present in the input tree.
+The require list format is the output of compute_node_balances (where balance values could be replaced by another approach if needed).}
 
 \item{min_num_tips}{The minimum number of tips on each side of a node that is required that node to be retained for the analysis.
 Ignored if significant nodes are specified manually.}
@@ -84,15 +86,20 @@ If this option is specified then an additional description column will be added 
 Must be a p.adjust option.}
 
 \item{detailed_output}{Boolean flag to indicate that several intermediate objects should be included in the final output.
-This is useful when troubleshooting issues, but is not expected to be useful for most users.}
+This is useful when troubleshooting issues, but is not expected to be useful for most users.
+The additional results include "balance_comparisons" (summary of Wilcoxon tests on balances),
+"func_enrichments" (Fisher's exact test output for all functions at each node),
+"tree" (the prepped tree used by the pipeline, including the added node labels if a tree lacking labels was provided),
+"input_param" (a list containing the input parameters specified).}
 
 \item{verbose}{Boolean flag to indicate that log information should be written to the console, to help keep track of the pipeline's progress.}
 }
 \value{
 A list containing at minimum three elements:\cr\cr
-"summary" - a dataframe with each tested function as a row and the numbers of FSNs of each type as columns, as well as the multinomial test output.\cr\cr
+"results" - a dataframe with each tested function as a row and the numbers of FSNs of each type as columns, as well as the multinomial test output.\cr\cr
 "balances" - a list of the sample balances at each tested node (including non-significant nodes).\cr\cr
 "BSNs" - the balance-significant node labels.\cr\cr
+"FSNs_summary" - list containing each tested function as a separate element. For functions with FSNs, will provide the node labels for nodes in each category of the multinomial test.
 }
 \description{
 Key function to run POMS pipeline.\cr
