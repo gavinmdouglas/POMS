@@ -46,7 +46,7 @@ test_that("Check that error related to presence of 0's occurs in absence of pseu
 
 test_that("Check that ILR values make sense for test case.", {
   
-  expected_output <- c(1.622685, 1.279992, 0.000000, -0.012730)
+  expected_output <- c(1.622685042, 1.263703782, 0.000000000, -0.012730004)
   names(expected_output) <- c("ERR321132", "SRR5127690", "SRR2992922", "ERR321066")
   
   expect_equal(object = abun_isometric_log_ratios(abun_table = ex_taxa_abun,
@@ -54,7 +54,7 @@ test_that("Check that ILR values make sense for test case.", {
                                                   set2_features = test_features2,
                                                   pseudocount = 1),
                expected = expected_output,
-               tolerance = 0.000001)
+               tolerance = 0.000000001)
 })
 
 
@@ -68,8 +68,8 @@ test_that("compute_node_balances check balances at one node with all default set
                                         pseudocount=1)
   
   expect_equal(as.numeric(balances_out$balances$n2),
-               c(0.4557199, 0.1411240, 0.3392601, 0.1679282),
-               tolerance = 0.0000001)
+               c(0.452007703, 0.098400066, 0.339260067, 0.167928196),
+               tolerance = 0.000000001)
   
 })
 
@@ -124,8 +124,8 @@ test_that("compute_node_balances change min number of tips to make sure that's w
                                         pseudocount=1)
   
   expect_equal(as.numeric(balances_out$balances$n47),
-               c(0.2362104, -0.5592617, -0.7025587, 0.0000000),
-               tolerance = 0.0000001)
+               c(0.20217048, -0.52710781, -0.70255869, 0.00000000),
+               tolerance = 0.00000001)
   
 })
 
@@ -152,8 +152,8 @@ test_that("compute_node_balances try altering pseudocount to make sure that para
                                         pseudocount=0.1)
   
   expect_equal(as.numeric(balances_out$balances$n2),
-               c(0.6441389, 0.2443771, 0.9872499, 0.3890996),
-               tolerance = 0.0000001)
+               c(0.636116099, 0.160104447, 0.987249903, 0.389099558),
+               tolerance = 0.000000001)
   
 })
 
