@@ -137,8 +137,6 @@ POMS_pipeline <- function(abun,
   if(verbose) { message("Prepping input tree.") }
   tree <- prep_tree(phy=tree, tips2keep=rownames(abun))
   
-  print(tree)
-  
   if((min_func_instances > 0) || (min_func_prop > 0)) {
     func <- filter_rare_table_cols(func,  min_func_instances, min_func_prop, verbose)
   }
@@ -209,7 +207,7 @@ POMS_pipeline <- function(abun,
   
   if(verbose) { message("Identifying enriched functions at all non-negligible nodes.") }
   
-  all_balances_enriched_funcs <- parallel::mclapply(names(calculated_balances$balances),
+  all_node_enriched_funcs <- parallel::mclapply(names(calculated_balances$balances),
                                           function(x) {
                                             return(node_func_fisher(node = x,
                                                                     in_tree = tree,
@@ -220,16 +218,16 @@ POMS_pipeline <- function(abun,
                                           },
                                           mc.cores = ncores)
   
-  names(all_balances_enriched_funcs) <- names(calculated_balances$balances)
+  names(all_node_enriched_funcs) <- names(calculated_balances$balances)
   
   if (verbose) { message("Summarizing significant functions across nodes.") }
   
-  func_summaries <- summarize_node_enrichment(all_balances_enriched_funcs, BSNs, FSN_p_cutoff)
+  func_summaries <- summarize_node_enrichment(all_node_enriched_funcs, BSNs, FSN_p_cutoff)
   
   # Get single DF summarizing the key metrics and print this out.
   all_func_id <- c()
-  for (balance in names(all_balances_enriched_funcs)) {
-    all_func_id <- c(all_func_id, rownames(all_balances_enriched_funcs[[balance]]))
+  for (balance in names(all_node_enriched_funcs)) {
+    all_func_id <- c(all_func_id, rownames(all_node_enriched_funcs[[balance]]))
   }
   
   if (length(which(duplicated(all_func_id))) > 0) {
@@ -310,7 +308,7 @@ POMS_pipeline <- function(abun,
       pairwise_node_out$mean_direction <- pairwise_node_out$mean_direction[BSNs]
 
       results[["balance_comparisons"]] <- pairwise_node_out
-      results[["func_enrichments"]] <- all_balances_enriched_funcs
+      results[["func_enrichments"]] <- all_node_enriched_funcs
       results[["tree"]] <- tree
       results[["input_param"]] <- input_param
   }

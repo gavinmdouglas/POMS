@@ -78,7 +78,7 @@ test_that("compute_node_balances error when no node labels.", {
   
   ex_tree$node.label <- NULL
   
-  expect_error(object = compute_node_balances(phylogeny = ex_tree,
+  expect_error(object = compute_node_balances(tree = ex_tree,
                                               abun_table = ex_taxa_abun,
                                               min_num_tips=5,
                                               ncores=1,
@@ -92,7 +92,7 @@ test_that("compute_node_balances error when tip not found as row name.", {
   
   ex_tree$tip.label[1] <- "test"
   
-  expect_error(object = compute_node_balances(phylogeny = ex_tree,
+  expect_error(object = compute_node_balances(tree = ex_tree,
                                               abun_table = ex_taxa_abun,
                                               min_num_tips=5,
                                               ncores=1,
@@ -104,7 +104,7 @@ test_that("compute_node_balances error when tip not found as row name.", {
 
 test_that("compute_node_balances error when node name in subset_to_test not found in tree.", {
   
-  expect_error(object = compute_node_balances(phylogeny = ex_tree,
+  expect_error(object = compute_node_balances(tree = ex_tree,
                                               abun_table = ex_taxa_abun,
                                               min_num_tips=5,
                                               ncores=1,
@@ -117,7 +117,7 @@ test_that("compute_node_balances error when node name in subset_to_test not foun
 
 test_that("compute_node_balances change min number of tips to make sure that's working.", {
   
-  balances_out <- compute_node_balances(phylogeny = ex_tree,
+  balances_out <- compute_node_balances(tree = ex_tree,
                                         abun_table = ex_taxa_abun,
                                         min_num_tips=2,
                                         ncores=1,
@@ -132,7 +132,7 @@ test_that("compute_node_balances change min number of tips to make sure that's w
 
 test_that("compute_node_balances try subset_to_test with nodes present and no nodes that pass the min_num_tips", {
   
-  expect_error(object = compute_node_balances(phylogeny = ex_tree,
+  expect_error(object = compute_node_balances(tree = ex_tree,
                                               abun_table = ex_taxa_abun,
                                               min_num_tips=5,
                                               ncores=1,
@@ -145,7 +145,7 @@ test_that("compute_node_balances try subset_to_test with nodes present and no no
 
 test_that("compute_node_balances try altering pseudocount to make sure that parameter is working as expected.", {
   
-  balances_out <- compute_node_balances(phylogeny = ex_tree,
+  balances_out <- compute_node_balances(tree = ex_tree,
                                         abun_table = ex_taxa_abun,
                                         min_num_tips=5,
                                         ncores=1,

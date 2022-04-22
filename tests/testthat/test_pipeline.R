@@ -10,7 +10,8 @@ ex_group2 <- read.table("../../example_files/ex_group2.txt.gz", stringsAsFactors
 
 ex_tree <- ape::read.tree("../../example_files/ex_tree.newick")
 ex_tree_w_label <- ex_tree
-ex_tree$node.label <- NULL
+ex_tree_wo_label <- ex_tree
+ex_tree_wo_label$node.label <- NULL
 
 
 # Example of how to run main POMS function. 
@@ -26,7 +27,7 @@ test_that("Two-group pipeline produces expected basic output with ex1 files", {
   
   ex_basic_output <- POMS_pipeline(abun = ex_taxa_abun,
                                     func = ex_func,
-                                    tree = ex_tree,
+                                    tree = ex_tree_wo_label,
                                     group1_samples = ex_group1,
                                     group2_samples = ex_group2,
                                     ncores = 1,
@@ -42,7 +43,7 @@ test_that("Correct error when significant nodes are not subset of tested nodes."
   
   expect_error(object = POMS_pipeline(abun = ex_taxa_abun,
                                       func = ex_func,
-                                      tree = ex_tree,
+                                      tree = ex_tree_w_label,
                                       group1_samples = ex_group1,
                                       group2_samples = ex_group2,
                                       ncores = 1,
@@ -50,15 +51,15 @@ test_that("Correct error when significant nodes are not subset of tested nodes."
                                       multinomial_min_FSNs = 3,
                                       min_func_instances = 0,
                                       manual_BSNs = c("test1", "test2"),
-                                      manual_balances = list(balances=list("a"=as.numeric(), "b"=as.numeric(), "c"=as.numeric())),
-               regexp = "Stopping - not all nodes in manual_BSNs vector are in in manual_balances"))
+                                      manual_balances = list(balances=list("a"=as.numeric(), "b"=as.numeric(), "c"=as.numeric()))),
+               regexp = "Stopping - not all nodes in manual_BSNs vector are in in manual_balances")
 })
 
 
 
-test_that("Correct error when significant nodes are not subset of tested nodes.", {
+test_that("Correct error when some node labels in balances input are not found in tree.", {
   
-  ex_balances_prepped <- compute_node_balances(tree = ex_tree,
+  ex_balances_prepped <- compute_node_balances(tree = ex_tree_w_label,
                                                abun_table = ex_taxa_abun,
                                                min_num_tips=5,
                                                ncores=1,
@@ -68,14 +69,33 @@ test_that("Correct error when significant nodes are not subset of tested nodes."
   
   expect_error(object = POMS_pipeline(abun = ex_taxa_abun,
                                       func = ex_func,
-                                      tree = ex_tree,
+                                      tree = ex_tree_w_label,
                                       group1_samples = ex_group1,
                                       group2_samples = ex_group2,
                                       ncores = 1,
                                       min_num_tips = 4,
                                       multinomial_min_FSNs = 3,
                                       min_func_instances = 0,
-                                      manual_BSNs = c("n1", "n2"),
-                                      manual_balances = ex_balances_prepped,
-                                      regexp = "Stopping - input tree does not have any node labels."))
+                                      manual_BSNs = c("test", "n2"),
+                                      manual_balances = ex_balances_prepped),
+                                      regexp = "Stopping - some balance labels \\(in manual input\\) are missing from tree node labels.")
 })
+
+
+
+test_that("Correct error when input tree is missing node labels when manual BSNs are specified.", {
+  
+  expect_error(object = POMS_pipeline(abun = ex_taxa_abun,
+                                      func = ex_func,
+                                      tree = ex_tree_wo_label,
+                                      group1_samples = ex_group1,
+                                      group2_samples = ex_group2,
+                                      ncores = 1,
+                                      min_num_tips = 4,
+                                      multinomial_min_FSNs = 3,
+                                      min_func_instances = 0,
+                                      manual_BSNs = c("a", "b"),
+                                      manual_balances = list(balances=list("a"=as.numeric(), "b"=as.numeric(), "c"=as.numeric()))),
+                                      regexp = "Stopping - node labels must be present in tree if manual balances are specificed.")
+})
+
