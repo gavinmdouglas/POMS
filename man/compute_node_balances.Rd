@@ -5,7 +5,7 @@
 \title{Computes balances (i.e., isometric log ratios, for each sample separately) of feature abundances at each node in the tree.}
 \usage{
 compute_node_balances(
-  phylogeny,
+  tree,
   abun_table,
   min_num_tips = 5,
   ncores = 1,
@@ -14,7 +14,7 @@ compute_node_balances(
 )
 }
 \arguments{
-\item{phylogeny}{Phylo object with tip labels matching row names of input abundance table. Note that node labels are required.}
+\item{tree}{Phylo object with tip labels matching row names of input abundance table. Note that node labels are required.}
 
 \item{abun_table}{Abundance table, e.g., read counts or relative abundance.
 Should be dataframe with column names correspond to sample names and row names corresponding to the tips of the tree.

@@ -12,6 +12,7 @@ ex_tree <- ape::read.tree("../../example_files/ex_tree.newick")
 ex_tree_w_label <- ex_tree
 ex_tree$node.label <- NULL
 
+
 # Example of how to run main POMS function. 
 test_that("Two-group pipeline produces expected basic output with ex1 files", {
  
@@ -25,7 +26,7 @@ test_that("Two-group pipeline produces expected basic output with ex1 files", {
   
   ex_basic_output <- POMS_pipeline(abun = ex_taxa_abun,
                                     func = ex_func,
-                                    phylogeny = ex_tree,
+                                    tree = ex_tree,
                                     group1_samples = ex_group1,
                                     group2_samples = ex_group2,
                                     ncores = 1,
@@ -37,13 +38,11 @@ test_that("Two-group pipeline produces expected basic output with ex1 files", {
 })
 
 
-
-# Check that error thrown when significant nodes input is not a subset of tested nodes.
 test_that("Correct error when significant nodes are not subset of tested nodes.", {
   
   expect_error(object = POMS_pipeline(abun = ex_taxa_abun,
                                       func = ex_func,
-                                      phylogeny = ex_tree,
+                                      tree = ex_tree,
                                       group1_samples = ex_group1,
                                       group2_samples = ex_group2,
                                       ncores = 1,
@@ -53,4 +52,30 @@ test_that("Correct error when significant nodes are not subset of tested nodes."
                                       manual_BSNs = c("test1", "test2"),
                                       manual_balances = list(balances=list("a"=as.numeric(), "b"=as.numeric(), "c"=as.numeric())),
                regexp = "Stopping - not all nodes in manual_BSNs vector are in in manual_balances"))
+})
+
+
+
+test_that("Correct error when significant nodes are not subset of tested nodes.", {
+  
+  ex_balances_prepped <- compute_node_balances(tree = ex_tree,
+                                               abun_table = ex_taxa_abun,
+                                               min_num_tips=5,
+                                               ncores=1,
+                                               pseudocount=1)
+  
+  names(ex_balances_prepped$balances)[1] <- "test"
+  
+  expect_error(object = POMS_pipeline(abun = ex_taxa_abun,
+                                      func = ex_func,
+                                      tree = ex_tree,
+                                      group1_samples = ex_group1,
+                                      group2_samples = ex_group2,
+                                      ncores = 1,
+                                      min_num_tips = 4,
+                                      multinomial_min_FSNs = 3,
+                                      min_func_instances = 0,
+                                      manual_BSNs = c("n1", "n2"),
+                                      manual_balances = ex_balances_prepped,
+                                      regexp = "Stopping - input tree does not have any node labels."))
 })

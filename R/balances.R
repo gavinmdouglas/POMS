@@ -134,7 +134,7 @@ abun_isometric_log_ratios <- function(abun_table, set1_features, set2_features, 
 
 #' Computes balances (i.e., isometric log ratios, for each sample separately) of feature abundances at each node in the tree.
 #' 
-#' @param phylogeny Phylo object with tip labels matching row names of input abundance table. Note that node labels are required.
+#' @param tree Phylo object with tip labels matching row names of input abundance table. Note that node labels are required.
 #'
 #' @param abun_table Abundance table, e.g., read counts or relative abundance.
 #' Should be dataframe with column names correspond to sample names and row names corresponding to the tips of the tree.
@@ -159,30 +159,30 @@ abun_isometric_log_ratios <- function(abun_table, set1_features, set2_features, 
 #' "negligible_nodes": character vector of node labels where there are fewer tips on either side of the node than specified by the "min_num_tips" argument.
 #' 
 #' @export
-compute_node_balances <- function(phylogeny, abun_table, min_num_tips=5, ncores=1, pseudocount=NULL, subset_to_test=NULL) {
+compute_node_balances <- function(tree, abun_table, min_num_tips=5, ncores=1, pseudocount=NULL, subset_to_test=NULL) {
   
-  if (is.null(phylogeny$node.label)) {
+  if (is.null(tree$node.label)) {
     stop("Stopping - input tree does not have any node labels.") 
   }
   
-  if (! all(phylogeny$tip.label %in% rownames(abun_table))) {
+  if (! all(tree$tip.label %in% rownames(abun_table))) {
     stop("Stopping - not all tips are found as row names in the abundance table.")
   }
   
   # Test all nodes unless subset specified.  
   if(! is.null(subset_to_test)) {
-    if (length(which(! subset_to_test %in% phylogeny$node.label)) > 0) {
+    if (length(which(! subset_to_test %in% tree$node.label)) > 0) {
       stop("Stopping - some labels in subset_to_test do not match node labels in the tree.")  
     }
     nodes_to_test <- subset_to_test
   } else {
-    nodes_to_test <- phylogeny$node.label
+    nodes_to_test <- tree$node.label
   }
   
   # Get tips on either side of each node.
   node_features <- parallel::mclapply(nodes_to_test,
                                       lhs_rhs_tips,
-                                      tree=phylogeny,
+                                      tree=tree,
                                       get_node_index=TRUE,
                                       mc.cores=ncores)
   

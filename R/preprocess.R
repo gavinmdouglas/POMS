@@ -43,7 +43,7 @@ prep_tree_sig_nodes <- function(in_list, taxa_table) {
 
 
 prep_tree <- function(phy, tips2keep) {
-  # Function to subset tree to tips of MAGs only
+  # Function to subset tree to specified tips only.
   # and run sanity checks.
   # Will midpoint root tree if necessary.
   # Add node labels to tree before returning (unless they are already present).

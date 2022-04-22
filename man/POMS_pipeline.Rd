@@ -7,7 +7,7 @@
 POMS_pipeline(
   abun,
   func,
-  phylogeny,
+  tree,
   group1_samples = NULL,
   group2_samples = NULL,
   ncores = 1,
@@ -29,14 +29,14 @@ POMS_pipeline(
 )
 }
 \arguments{
-\item{abun}{Dataframe of abundances of taxa which are at the tips of the input phylogeny, which would usually be individual genomes.
+\item{abun}{Dataframe of abundances of taxa which are at the tips of the input tree, which would usually be individual genomes.
 The taxa should be the rows and the samples the columns.}
 
 \item{func}{Dataframe of the number of copies of each function that are encoded by each input taxon.
 This pipeline only considers the presence/absence of functions across taxa.
 Taxa (with rownames intersecting with the "abun" table) should be the rows and the functions should be the columns.}
 
-\item{phylogeny}{Phylo object with tip labels that match the rownames of the "abun" and "func" tables.
+\item{tree}{Phylo object with tip labels that match the rownames of the "abun" and "func" tables.
 This object is usually a newick tree that has been read into R with the ape R package.}
 
 \item{group1_samples}{Character vector of column names of "abun" table that correspond to the first sample group.
@@ -49,7 +49,7 @@ This grouping is used for testing for significant sample balances at each node.}
 \item{pseudocount}{Number added to all cells of "abun" table to avoid 0 values.
 Set this to be 0 if this is not desired, although there will be issues with the balance tree approach if any 0's are present.}
 
-\item{manual_BSNs}{Optional vector of node names that match node labels of input phylogeny.
+\item{manual_BSNs}{Optional vector of node names that match node labels of input tree.
 These nodes will be considered the significant balance tree set, and the Wilcoxon tests will not be run.
 The group means of the balances at each node will still be used to determine which group has higher values.
 Note this requires that "manual_balances" is also specified.}

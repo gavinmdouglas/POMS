@@ -59,6 +59,21 @@ test_that("Check that ILR values make sense for test case.", {
 
 
 
+test_that("compute_node_balances check balances at one node with all default settings.", {
+  
+  balances_out <- compute_node_balances(tree = ex_tree,
+                                        abun_table = ex_taxa_abun,
+                                        min_num_tips=5,
+                                        ncores=1,
+                                        pseudocount=1)
+  
+  expect_equal(as.numeric(balances_out$balances$n2),
+               c(0.4557199, 0.1411240, 0.3392601, 0.1679282),
+               tolerance = 0.0000001)
+  
+})
+
+
 test_that("compute_node_balances error when no node labels.", {
   
   ex_tree$node.label <- NULL
@@ -96,21 +111,6 @@ test_that("compute_node_balances error when node name in subset_to_test not foun
                                               pseudocount=1,
                                               subset_to_test = c("n1", "n2", "n1000")),
                regexp = "Stopping - some labels in subset_to_test do not match node labels in the tree.")
-  
-})
-
-
-test_that("compute_node_balances check balances at one node with all default settings.", {
-  
-  balances_out <- compute_node_balances(phylogeny = ex_tree,
-                                        abun_table = ex_taxa_abun,
-                                        min_num_tips=5,
-                                        ncores=1,
-                                        pseudocount=1)
-  
-  expect_equal(as.numeric(balances_out$balances$n2),
-               c(0.4557199, 0.1411240, 0.3392601, 0.1679282),
-               tolerance = 0.0000001)
   
 })
 

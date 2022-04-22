@@ -17,14 +17,14 @@
 #' 
 #' A multinomial test is run to see if the tallies the FSNs in these three categories is significantly different from the random expectation.
 #'
-#' @param abun Dataframe of abundances of taxa which are at the tips of the input phylogeny, which would usually be individual genomes.
+#' @param abun Dataframe of abundances of taxa which are at the tips of the input tree, which would usually be individual genomes.
 #' The taxa should be the rows and the samples the columns.
 #' 
 #' @param func Dataframe of the number of copies of each function that are encoded by each input taxon.
 #' This pipeline only considers the presence/absence of functions across taxa.
 #' Taxa (with rownames intersecting with the "abun" table) should be the rows and the functions should be the columns.
 #' 
-#' @param phylogeny Phylo object with tip labels that match the rownames of the "abun" and "func" tables.
+#' @param tree Phylo object with tip labels that match the rownames of the "abun" and "func" tables.
 #' This object is usually a newick tree that has been read into R with the ape R package.
 #' 
 #' @param group1_samples Character vector of column names of "abun" table that correspond to the first sample group.
@@ -37,7 +37,7 @@
 #' @param pseudocount Number added to all cells of "abun" table to avoid 0 values.
 #' Set this to be 0 if this is not desired, although there will be issues with the balance tree approach if any 0's are present.
 #'
-#' @param manual_BSNs Optional vector of node names that match node labels of input phylogeny.
+#' @param manual_BSNs Optional vector of node names that match node labels of input tree.
 #' These nodes will be considered the significant balance tree set, and the Wilcoxon tests will not be run.
 #' The group means of the balances at each node will still be used to determine which group has higher values.
 #' Note this requires that "manual_balances" is also specified.
@@ -91,7 +91,7 @@
 #' @export
 POMS_pipeline <- function(abun,
                           func,
-                          phylogeny,
+                          tree,
                           group1_samples=NULL,
                           group2_samples=NULL,
                           ncores=1,
@@ -114,7 +114,7 @@ POMS_pipeline <- function(abun,
   if(verbose) { message("Checking input arguments.") }
   input_param <- check_POMS_pipeline_args(abun=abun,
                                           func=func,
-                                          phylogeny=phylogeny,
+                                          tree=tree,
                                           group1_samples=group1_samples,
                                           group2_samples=group2_samples,
                                           ncores=ncores,
@@ -134,8 +134,10 @@ POMS_pipeline <- function(abun,
                                           detailed_output=detailed_output,
                                           verbose=verbose)
   
-  if(verbose) { message("Prepping input phylogeny.") }
-  phylogeny <- prep_tree(phy=phylogeny, tips2keep=rownames(abun))
+  if(verbose) { message("Prepping input tree.") }
+  tree <- prep_tree(phy=tree, tips2keep=rownames(abun))
+  
+  print(tree)
   
   if((min_func_instances > 0) || (min_func_prop > 0)) {
     func <- filter_rare_table_cols(func,  min_func_instances, min_func_prop, verbose)
@@ -154,7 +156,7 @@ POMS_pipeline <- function(abun,
     }
     
     calculated_balances <- compute_node_balances(abun=abun,
-                                                 phylogeny=phylogeny,
+                                                 tree=tree,
                                                  ncores=ncores,
                                                  min_num_tips = min_num_tips,
                                                  pseudocount=pseudocount)
@@ -164,7 +166,7 @@ POMS_pipeline <- function(abun,
       return(list(error = "Cannot run POMS workflow because no nodes are non-negligible based on specified settings."))
     }
     
-    if(verbose) { message("Identified ", length(calculated_balances$balances), " of ", length(phylogeny$node.label), " nodes as non-negligible and will be used for analyses.") }
+    if(verbose) { message("Identified ", length(calculated_balances$balances), " of ", length(tree$node.label), " nodes as non-negligible and will be used for analyses.") }
     
     if(verbose) { message("Running Wilcoxon tests to test for differences in balances between groups at each non-negligible node.") }
     
@@ -180,21 +182,21 @@ POMS_pipeline <- function(abun,
     
     BSNs <- manual_BSNs
     
-    if (any(! BSNs %in% phylogeny$node.label)) { stop("Not all sig. nodes are not found in phylogeny.")}
+    if (any(! BSNs %in% tree$node.label)) { stop("Not all sig. nodes are not found in tree.")}
     
     calculated_balances <- list()
     calculated_balances$balances <- manual_balances
     calculated_balances$features <- parallel::mclapply(names(manual_balances),
                                                        lhs_rhs_tips,
-                                                       tree=phylogeny,
+                                                       tree=tree,
                                                        get_node_index=TRUE,
                                                        mc.cores=ncores)
     
     names(calculated_balances$features) <- names(manual_balances)
     
-    negligible_nodes_i <- which(! names(phylogeny$node.label) %in% names(manual_balances))
+    negligible_nodes_i <- which(! names(tree$node.label) %in% names(manual_balances))
     if (length(negligible_nodes_i) > 0) {
-      calculated_balances$negligible_nodes <- phylogeny$node.label[negligible_nodes_i]
+      calculated_balances$negligible_nodes <- tree$node.label[negligible_nodes_i]
     } else {
       calculated_balances$negligible_nodes <- c()
     }
@@ -210,7 +212,7 @@ POMS_pipeline <- function(abun,
   all_balances_enriched_funcs <- parallel::mclapply(names(calculated_balances$balances),
                                           function(x) {
                                             return(node_func_fisher(node = x,
-                                                                    in_tree = phylogeny,
+                                                                    in_tree = tree,
                                                                     in_func = func,
                                                                     higher_group=pairwise_node_out$mean_direction[x],
                                                                     add_pseudocount=TRUE,
@@ -309,7 +311,7 @@ POMS_pipeline <- function(abun,
 
       results[["balance_comparisons"]] <- pairwise_node_out
       results[["func_enrichments"]] <- all_balances_enriched_funcs
-      results[["tree"]] <- phylogeny
+      results[["tree"]] <- tree
       results[["input_param"]] <- input_param
   }
   
@@ -320,7 +322,7 @@ POMS_pipeline <- function(abun,
 
 check_POMS_pipeline_args <- function(abun,
                                      func,
-                                     phylogeny,
+                                     tree,
                                      group1_samples,
                                      group2_samples,
                                      ncores,
@@ -352,19 +354,19 @@ check_POMS_pipeline_args <- function(abun,
       stop("Stopping - not all nodes in manual_BSNs vector are in in manual_balances") 
     }
     
-    if (! "node.label" %in% names(phylogeny)) {
-      stop("Stopping - node labels must be present in phylogeny if manual balances are specificed.") 
+    if (! "node.label" %in% names(tree)) {
+      stop("Stopping - node labels must be present in tree if manual balances are specificed.") 
     }
     
-    if (length(which(! names(manual_balances$balances) %in% phylogeny$node.label)) > 0) {
-      stop("Stopping - some balance labels (in manual input) are missing from phylogeny node labels.") 
+    if (length(which(! names(manual_balances$balances) %in% tree$node.label)) > 0) {
+      stop("Stopping - some balance labels (in manual input) are missing from tree node labels.") 
     }
     
   }
   
   if (class(abun) != "data.frame") { stop("Stopping - argument abun needs to be of the class data.frame.") }
   if (class(func) != "data.frame") { stop("Stopping - argument func needs to be of the class data.frame.") }
-  if (class(phylogeny) != "phylo") { stop("Stopping - argument phylo needs to be of the class phylo.") }
+  if (class(tree) != "phylo") { stop("Stopping - argument phylo needs to be of the class phylo.") }
 
   if (class(group1_samples) != "character") { stop("Stopping - argument group1_samples needs to be of the class character.") }
   if (class(group2_samples) != "character") { stop("Stopping - argument group2_samples needs to be of the class character.") }
@@ -383,7 +385,7 @@ check_POMS_pipeline_args <- function(abun,
   if ((class(multinomial_min_FSNs) != "integer") && (class(multinomial_min_FSNs) != "numeric")) { stop("Stopping - multinomial_min_FSNs argument needs to be of class numeric or integer.") }
   if (multinomial_min_FSNs < 0) { stop("Stopping - multinomial_min_FSNs argument cannot be lower than 0.") }
   
-  if (min_num_tips > length(phylogeny$tip.label) / 2) { stop("Stopping - the min_num_tips argument cannot be higher than half of the total number of tips.") }
+  if (min_num_tips > length(tree$tip.label) / 2) { stop("Stopping - the min_num_tips argument cannot be higher than half of the total number of tips.") }
 
   if ((min_func_prop < 0) || (min_func_prop > 1)) { stop("Stopping - the min_func_prop argument must be between 0 and 1.") }
   if ((BSN_p_cutoff < 0) || (BSN_p_cutoff > 1)) { stop("Stopping - the BSN_p_cutoff argument must be between 0 and 1.") }
