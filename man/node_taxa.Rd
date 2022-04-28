@@ -2,7 +2,7 @@
 % Please edit documentation in R/balances.R
 \name{node_taxa}
 \alias{node_taxa}
-\title{Determine representative taxa labels of tips on each side of a specific node.\cr}
+\title{Determine taxa labels of tips on each side of a node\cr}
 \usage{
 node_taxa(
   in_tree,

@@ -1,4 +1,4 @@
-#' Determine representative taxa labels of tips on each side of a specific node.\cr
+#' Determine taxa labels of tips on each side of a node\cr
 #'
 #' Takes in a tree, a table of taxa labels per tip, and either a node label or index.\cr
 #' 
@@ -62,6 +62,8 @@ node_taxa <- function(in_tree, taxon_labels, node_label=NULL, node_index=NULL, t
 }
 
 
+#' Computes isometric log ratio based on abundance of feature sets
+#'
 #' Computes isometric log ratio between two sets of feature abundances, for each sample separately. Requires an abundance table,
 #' with two sets of features for which the ratio will be computed. 
 #'

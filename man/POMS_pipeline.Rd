@@ -95,14 +95,14 @@ The additional results include "balance_comparisons" (summary of Wilcoxon tests 
 \item{verbose}{Boolean flag to indicate that log information should be written to the console, to help keep track of the pipeline's progress.}
 }
 \value{
-A list containing at minimum three elements:\cr\cr
+A list containing at minimum these elements:\cr\cr
 "results" - a dataframe with each tested function as a row and the numbers of FSNs of each type as columns, as well as the multinomial test output.\cr\cr
 "balances" - a list of the sample balances at each tested node (including non-significant nodes).\cr\cr
 "BSNs" - the balance-significant node labels.\cr\cr
 "FSNs_summary" - list containing each tested function as a separate element. For functions with FSNs, will provide the node labels for nodes in each category of the multinomial test.
 }
 \description{
-Key function to run POMS pipeline.\cr
+Key function to run POMS pipeline. See details below.\cr
 }
 \details{
 This function will identify significant nodes based on sample balances using a Wilcoxon test by default, or significant nodes can be specified.

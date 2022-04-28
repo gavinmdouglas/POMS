@@ -2,8 +2,7 @@
 % Please edit documentation in R/balances.R
 \name{abun_isometric_log_ratios}
 \alias{abun_isometric_log_ratios}
-\title{Computes isometric log ratio between two sets of feature abundances, for each sample separately. Requires an abundance table,
-with two sets of features for which the ratio will be computed.}
+\title{Computes isometric log ratio based on abundance of feature sets}
 \usage{
 abun_isometric_log_ratios(
   abun_table,
