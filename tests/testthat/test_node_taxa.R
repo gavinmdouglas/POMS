@@ -5,7 +5,7 @@ ex_taxa_labels <- read.table("../../example_files/ex_taxa_labels.tsv.gz", header
 ex_tree <- ape::read.tree("../../example_files/ex_tree.newick")
 
 
-test_that("Check taxa on each side of the node - combined labels and threshold of 0.51", {
+test_that("taxa on each side of the node are correct, with combined labels and threshold of 0.51", {
  
   exp_output <- c("Bacteria; Bacteroidetes; Bacteroidia; Bacteroidales; Porphyromonadaceae (Family)",
                   "Bacteria; Bacteroidetes; Bacteroidia; Bacteroidales; Porphyromonadaceae; NA (Genus)")
@@ -18,7 +18,7 @@ test_that("Check taxa on each side of the node - combined labels and threshold o
 })
 
 
-test_that("Check taxa on each side of the node - simple (non-combined) labels and threshold of 0.95", {
+test_that("taxa on each side of the node are correct, with simple (non-combined) labels and threshold of 0.95", {
   
   exp_output <- c("Porphyromonadaceae (Family)", "Bacteroidales (Order)")
   

@@ -15,7 +15,7 @@ ex_tree_wo_label$node.label <- NULL
 
 
 # Example of how to run main POMS function. 
-test_that("Two-group pipeline produces expected basic output with ex1 files", {
+test_that("two-group pipeline produces expected basic output with ex1 files", {
  
   expected_df <- data.frame(num_FSNs = c(4, 5),
                             num_FSNs_group1_enrich = c(2, 5),
@@ -39,7 +39,7 @@ test_that("Two-group pipeline produces expected basic output with ex1 files", {
 })
 
 
-test_that("Correct error when significant nodes are not subset of tested nodes.", {
+test_that("correct error occurs when significant nodes are not subset of tested nodes.", {
   
   expect_error(object = POMS_pipeline(abun = ex_taxa_abun,
                                       func = ex_func,
@@ -57,7 +57,7 @@ test_that("Correct error when significant nodes are not subset of tested nodes."
 
 
 
-test_that("Correct error when some node labels in balances input are not found in tree.", {
+test_that("correct error occurs when some node labels in balances input are not found in tree.", {
   
   ex_balances_prepped <- compute_node_balances(tree = ex_tree_w_label,
                                                abun_table = ex_taxa_abun,
@@ -83,7 +83,7 @@ test_that("Correct error when some node labels in balances input are not found i
 
 
 
-test_that("Correct error when input tree is missing node labels when manual BSNs are specified.", {
+test_that("correct error occurs when input tree is missing node labels when manual BSNs are specified.", {
   
   expect_error(object = POMS_pipeline(abun = ex_taxa_abun,
                                       func = ex_func,

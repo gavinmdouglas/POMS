@@ -19,7 +19,7 @@ ex_taxa_labels <- read.table("../../example_files/ex_taxa_labels.tsv.gz",
                              stringsAsFactors = FALSE,
                              row.names = 1)
 
-test_that("Expected error returned when features not present in table are input.", {
+test_that("expected error returned when features not present in table are input.", {
   expect_error(object = abun_isometric_log_ratios(abun_table = ex_taxa_abun,
                                                   set1_features = test_features1,
                                                   set2_features = test_features_w_missing),
@@ -27,7 +27,7 @@ test_that("Expected error returned when features not present in table are input.
 })
 
 
-test_that("Expected error returned when features intersecting between sets.", {
+test_that("expected error returned when features intersecting between sets.", {
   expect_error(object = abun_isometric_log_ratios(abun_table = ex_taxa_abun,
                                                   set1_features = test_features1,
                                                   set2_features = test_features_w_overlapping),
@@ -35,7 +35,7 @@ test_that("Expected error returned when features intersecting between sets.", {
 })
 
 
-test_that("Check that error related to presence of 0's occurs in absence of pseudocount", {
+test_that("error related to presence of 0's occurs in absence of pseudocount", {
   expect_error(object = abun_isometric_log_ratios(abun_table = ex_taxa_abun,
                                                   set1_features = test_features1,
                                                   set2_features = test_features2,
@@ -44,7 +44,7 @@ test_that("Check that error related to presence of 0's occurs in absence of pseu
 })
 
 
-test_that("Check that ILR values make sense for test case.", {
+test_that("ILR values make sense for test case.", {
   
   expected_output <- c(1.622685042, 1.263703782, 0.000000000, -0.012730004)
   names(expected_output) <- c("ERR321132", "SRR5127690", "SRR2992922", "ERR321066")
@@ -157,27 +157,3 @@ test_that("compute_node_balances try altering pseudocount to make sure that para
   
 })
 
-
-test_that("Check taxa on each side of the node - combined labels and threshold of 0.51", {
- 
-  exp_output <- c("Bacteria; Bacteroidetes; Bacteroidia; Bacteroidales; Porphyromonadaceae (Family)",
-                  "Bacteria; Bacteroidetes; Bacteroidia; Bacteroidales; Porphyromonadaceae; NA (Genus)")
-
-  obs_output <- node_taxa(in_tree = ex_tree, taxon_labels = ex_taxa_labels,
-                          node_label = "n1", combine_labels = TRUE, threshold = 0.51)
-  
-  expect_equal(obs_output, exp_output)
-
-})
-
-
-test_that("Check taxa on each side of the node - simple (non-combined) labels and threshold of 0.95", {
-  
-  exp_output <- c("Porphyromonadaceae (Family)", "Bacteroidales (Order)")
-  
-  obs_output <- node_taxa(in_tree = ex_tree, taxon_labels = ex_taxa_labels,
-                          node_label = "n1", combine_labels = FALSE, threshold = 0.95)
-  
-  expect_equal(obs_output, exp_output)
-  
-})
