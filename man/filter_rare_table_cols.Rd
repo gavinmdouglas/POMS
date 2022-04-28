@@ -8,6 +8,7 @@ filter_rare_table_cols(
   in_tab,
   min_nonzero_count,
   min_nonzero_prop,
+  drop_missing_rows = TRUE,
   verbose = TRUE
 )
 }

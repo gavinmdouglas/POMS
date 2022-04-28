@@ -5,17 +5,19 @@
 #' if the table contains negative values. Included in package simply to make running workflow easier.
 #'  
 #' @param in_tab Input dataframe
-#' 
+#'
 #' @param min_nonzero_count Min number of cells in column that must be non-zero for column to be retained.
-#' 
+#'
 #' @param min_nonzero_prop Min proportion of cells in column that must be non-zero for column to be retained.
 #'
+#' @param verbose Boolean flag to indicate whether rows with all zero values (after dropping columns based on specified cut-offs) should be removed.
+#'
 #' @param verbose Boolean flag to indicate that the number of columns removed should be written to the console.
-#' 
+#'
 #' @return Dataframe with columns that did not meet the `min_nonzero_count` and/or `min_nonzero_prop` options removed.
-#' 
+#'
 #' @export
-filter_rare_table_cols <- function(in_tab, min_nonzero_count, min_nonzero_prop, verbose=TRUE) {
+filter_rare_table_cols <- function(in_tab, min_nonzero_count, min_nonzero_prop, drop_missing_rows=TRUE, verbose=TRUE) {
 
   if (class(in_tab) != "data.frame") {
     stop("Error - argument \"in_tab\" not class data.frame") 
@@ -27,13 +29,27 @@ filter_rare_table_cols <- function(in_tab, min_nonzero_count, min_nonzero_prop, 
   
   if(length(col2remove) > 0) {
     
-    if (verbose) { message(paste("Filtering", as.character(length(col2remove)), "rare functions from input function table.")) }
+    if (verbose) { message(paste("Filtering out", as.character(length(col2remove)), "rare functions from input function table.")) }
 
     in_tab <- in_tab[, -col2remove, drop = FALSE]
     
   } else {
     
     if (verbose) { message("No columns removed.") }
+    
+  }
+  
+  if (drop_missing_rows) {
+   
+    missing_rows <- which(rowSums(in_tab > 0) == 0)
+     
+    if (length(missing_rows) > 0) {
+
+      if (verbose) { message(paste("Filtering out", as.character(length(missing_rows)), "rows that contain no non-zero values.")) }
+  
+      in_tab <- in_tab[-missing_rows, , drop = FALSE]
+    
+    }
     
   }
   

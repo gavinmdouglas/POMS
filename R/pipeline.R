@@ -138,7 +138,12 @@ POMS_pipeline <- function(abun,
   tree <- prep_tree(phy=tree, tips2keep=rownames(abun))
   
   if((min_func_instances > 0) || (min_func_prop > 0)) {
-    func <- filter_rare_table_cols(func,  min_func_instances, min_func_prop, verbose)
+
+    func <- filter_rare_table_cols(in_tab = func,
+                                   min_nonzero_count = min_func_instances,
+                                   min_nonzero_prop = min_func_prop,
+                                   drop_missing_rows = FALSE,
+                                   verbose = verbose)
   }
   
   if (is.null(manual_BSNs)) {
