@@ -218,7 +218,7 @@ POMS_pipeline <- function(abun,
                                                                     in_tree = tree,
                                                                     in_func = func,
                                                                     higher_group=pairwise_node_out$mean_direction[x],
-                                                                    add_pseudocount=TRUE,
+                                                                    add_pseudocount=FALSE,
                                                                     multiple_test_corr=FSN_correction))
                                           },
                                           mc.cores = ncores)
