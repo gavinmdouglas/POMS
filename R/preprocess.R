@@ -29,7 +29,7 @@ filter_rare_table_cols <- function(in_tab, min_nonzero_count, min_nonzero_prop, 
   
   if(length(col2remove) > 0) {
     
-    if (verbose) { message(paste("Filtering out", as.character(length(col2remove)), "rare functions from input function table.")) }
+    if (verbose) { message(paste("Filtering out", as.character(length(col2remove)), "rare functions from input function table.", sep = " ")) }
 
     in_tab <- in_tab[, -col2remove, drop = FALSE]
     
@@ -45,7 +45,7 @@ filter_rare_table_cols <- function(in_tab, min_nonzero_count, min_nonzero_prop, 
      
     if (length(missing_rows) > 0) {
 
-      if (verbose) { message(paste("Filtering out", as.character(length(missing_rows)), "rows that contain no non-zero values.")) }
+      if (verbose) { message(paste("Filtering out", as.character(length(missing_rows)), "rows that contain no non-zero values.", sep = " ")) }
   
       in_tab <- in_tab[-missing_rows, , drop = FALSE]
     
@@ -117,7 +117,7 @@ subset_by_col_and_filt <- function(in_tab, col2keep, verbose = TRUE) {
   }
   
   if (verbose) {
-    message("Returning dataframe with ", as.character(nrow(in_tab)), "rows and", as.character(ncol(in_tab)), "columns.")
+    message("Returning dataframe with ", as.character(nrow(in_tab)), "rows and", as.character(ncol(in_tab)), "columns.", sep = " ")
   }
   
   return(in_tab)
