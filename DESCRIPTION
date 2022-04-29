@@ -1,17 +1,12 @@
 Package: POMS
 Title: Phylogenetic Organization of Metagenomic Signals
-Version: 0.1.0
+Version: 0.2.0
 Authors@R:
     person(given = "Gavin",
            family = "Douglas",
            role = c("aut", "cre"),
            email = "gavinmdouglas@gmail.com")
-Description: This package is meant to aid researchers conduct
-    exploratory data analysis of metagenomics sequencing data.
-    The first step of POMS is always to identify significant nodes
-    in a phylogenetic tree containing the taxa within the user's dataset.
-    Enrichment tests are then run to test for enriched gene families on
-    each side of each significant node.
+Description: Code to identify functional enrichments across phylogenetic tree that are found across diverse taxa that differ in abundance across samples in a non-random pattern. The motivation for this approach is to identify microbial functions encoded by diverse taxa that are at higher abundance in certain samples compared to others, which could indicate that such functions are broadly adaptive under certain conditions. See GitHub repository for tutorial and examples: https://github.com/gavinmdouglas/POMS/wiki.
 License: `use_gpl3_license()`
 Encoding: UTF-8
 LazyData: true
