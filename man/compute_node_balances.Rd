@@ -7,7 +7,7 @@
 compute_node_balances(
   tree,
   abun_table,
-  min_num_tips = 5,
+  min_num_tips = 10,
   ncores = 1,
   pseudocount = NULL,
   subset_to_test = NULL

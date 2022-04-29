@@ -47,13 +47,13 @@ node_func_fisher <- function(node, in_tree, in_func, higher_group, add_pseudocou
   
   node_features <- lhs_rhs_tips(in_tree, node, get_node_index=TRUE)
   
-  if(higher_group == "group1") {
+  if (is.na(higher_group) || higher_group == "group1") {
     node_fisher_tests <- feature_sets_func_fisher(in_func = in_func,
                                                   feature_set1 = node_features$lhs,
                                                   feature_set2 = node_features$rhs,
                                                   add_pseudocount=add_pseudocount,
                                                   multiple_test_corr=multiple_test_corr)
-  } else if(higher_group == "group2") {
+  } else if (higher_group == "group2") {
     node_fisher_tests <- feature_sets_func_fisher(in_func = in_func,
                                                   feature_set1 = node_features$rhs,
                                                   feature_set2 = node_features$lhs,

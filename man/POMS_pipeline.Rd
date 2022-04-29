@@ -14,6 +14,7 @@ POMS_pipeline(
   pseudocount = 1,
   manual_BSNs = NULL,
   manual_balances = NULL,
+  manual_BSN_dir = NULL,
   min_num_tips = 10,
   min_func_instances = 10,
   min_func_prop = 0.001,
@@ -40,7 +41,8 @@ Taxa (with rownames intersecting with the "abun" table) should be the rows and t
 This object is usually a newick tree that has been read into R with the ape R package.}
 
 \item{group1_samples}{Character vector of column names of "abun" table that correspond to the first sample group.
-This grouping is used for testing for significant sample balances at each node.}
+This grouping is used for testing for significant sample balances at each node.
+Required unless the "manual_BSN_dir" argument is set (i.e., if the binary directions of BSNs are specified manually).}
 
 \item{group2_samples}{Same as "group1_samples", but corresponding to the second sample group.}
 
@@ -51,13 +53,19 @@ Set this to be 0 if this is not desired, although there will be issues with the 
 
 \item{manual_BSNs}{Optional vector of node names that match node labels of input tree.
 These nodes will be considered the significant balance tree set, and the Wilcoxon tests will not be run.
-The group means of the balances at each node will still be used to determine which group has higher values.
-Note this requires that "manual_balances" is also specified.}
+The group means of the b/alances at each node will still be used to determine which group has higher values.
+Note this requires that/ "manual_balances" is also specified.}
 
 \item{manual_balances}{Optional list of balance values which represent the balances at all tested nodes that resulted in the input to the manual_BSNs vector.
 This list must include balances for all nodes in the manual_BSNs vector, but also all non-significant tested nodes as well.
 These node labels must all be present in the input tree.
-The require list format is the output of compute_node_balances (where balance values could be replaced by another approach if needed).}
+The required list format is the "balances" object in the output of compute_node_balances (where balance values could be replaced by another approach if needed).}
+
+\item{manual_BSN_dir}{Optional character vector specifying "group1" or "group2", depending on the direction of the BSN difference.
+This must be a named vector, with all names matching the set of nodes specified by the manual_BSNs argument.
+Although this requires that the exact labels "group1" or "group2" are specified, these categories could represent different binary divisions rather than strict sample groups.
+For instance, "group1" could be used to represent nodes where sample balances are positively associated with a continuous variable (rather than a discrete grouping),
+whereas "group2" could represent nodes where sample balances are negatively associated.}
 
 \item{min_num_tips}{The minimum number of tips on each side of a node that is required that node to be retained for the analysis.
 Ignored if significant nodes are specified manually.}
@@ -96,9 +104,9 @@ The additional results include "balance_comparisons" (summary of Wilcoxon tests 
 }
 \value{
 A list containing at minimum these elements:\cr\cr
-"results" - a dataframe with each tested function as a row and the numbers of FSNs of each type as columns, as well as the multinomial test output.\cr\cr
-"balances" - a list of the sample balances at each tested node (including non-significant nodes).\cr\cr
-"BSNs" - the balance-significant node labels.\cr\cr
+"results" - dataframe with each tested function as a row and the numbers of FSNs of each type as columns, as well as the multinomial test output.\cr\cr
+"balances" - list of the sample balances at each tested node (including non-significant nodes).\cr\cr
+"BSNs" - character vector with BSNs as names and values of \"group1\" and \"group2\" to indicate for which sample group (or other binary division) the sample balances were higher\cr\cr
 "FSNs_summary" - list containing each tested function as a separate element. For functions with FSNs, will provide the node labels for nodes in each category of the multinomial test.
 }
 \description{

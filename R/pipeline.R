@@ -29,6 +29,7 @@
 #' 
 #' @param group1_samples Character vector of column names of "abun" table that correspond to the first sample group.
 #' This grouping is used for testing for significant sample balances at each node.
+#' Required unless the "manual_BSN_dir" argument is set (i.e., if the binary directions of BSNs are specified manually).
 #' 
 #' @param group2_samples Same as "group1_samples", but corresponding to the second sample group.
 #' 
@@ -39,14 +40,20 @@
 #'
 #' @param manual_BSNs Optional vector of node names that match node labels of input tree.
 #' These nodes will be considered the significant balance tree set, and the Wilcoxon tests will not be run.
-#' The group means of the balances at each node will still be used to determine which group has higher values.
-#' Note this requires that "manual_balances" is also specified.
+#' The group means of the b/alances at each node will still be used to determine which group has higher values.
+#' Note this requires that/ "manual_balances" is also specified.
 #' 
 #' @param manual_balances Optional list of balance values which represent the balances at all tested nodes that resulted in the input to the manual_BSNs vector.
 #' This list must include balances for all nodes in the manual_BSNs vector, but also all non-significant tested nodes as well.
 #' These node labels must all be present in the input tree.
-#' The require list format is the output of compute_node_balances (where balance values could be replaced by another approach if needed).
+#' The required list format is the "balances" object in the output of compute_node_balances (where balance values could be replaced by another approach if needed).
 #' 
+#' @param manual_BSN_dir Optional character vector specifying "group1" or "group2", depending on the direction of the BSN difference.
+#' This must be a named vector, with all names matching the set of nodes specified by the manual_BSNs argument.
+#' Although this requires that the exact labels "group1" or "group2" are specified, these categories could represent different binary divisions rather than strict sample groups. 
+#' For instance, "group1" could be used to represent nodes where sample balances are positively associated with a continuous variable (rather than a discrete grouping),
+#' whereas "group2" could represent nodes where sample balances are negatively associated.
+#'
 #' @param min_num_tips The minimum number of tips on each side of a node that is required that node to be retained for the analysis.
 #' Ignored if significant nodes are specified manually.
 #' 
@@ -83,9 +90,9 @@
 #' @param verbose Boolean flag to indicate that log information should be written to the console, to help keep track of the pipeline's progress.
 #' 
 #' @return A list containing at minimum these elements:\cr\cr
-#' "results" - a dataframe with each tested function as a row and the numbers of FSNs of each type as columns, as well as the multinomial test output.\cr\cr
-#' "balances" - a list of the sample balances at each tested node (including non-significant nodes).\cr\cr
-#' "BSNs" - the balance-significant node labels.\cr\cr
+#' "results" - dataframe with each tested function as a row and the numbers of FSNs of each type as columns, as well as the multinomial test output.\cr\cr
+#' "balances" - list of the sample balances at each tested node (including non-significant nodes).\cr\cr
+#' "BSNs" - character vector with BSNs as names and values of \"group1\" and \"group2\" to indicate for which sample group (or other binary division) the sample balances were higher\cr\cr
 #' "FSNs_summary" - list containing each tested function as a separate element. For functions with FSNs, will provide the node labels for nodes in each category of the multinomial test.
 #' 
 #' @export
@@ -98,6 +105,7 @@ POMS_pipeline <- function(abun,
                           pseudocount=1,
                           manual_BSNs=NULL,
                           manual_balances=NULL,
+                          manual_BSN_dir=NULL,
                           min_num_tips=10,
                           min_func_instances=10,
                           min_func_prop=0.001,
@@ -121,6 +129,7 @@ POMS_pipeline <- function(abun,
                                           pseudocount=pseudocount,
                                           manual_BSNs=manual_BSNs,
                                           manual_balances=manual_balances,
+                                          manual_BSN_dir=manual_BSN_dir,
                                           min_num_tips=min_num_tips,
                                           min_func_instances=min_func_instances,
                                           min_func_prop=min_func_prop,
@@ -204,13 +213,19 @@ POMS_pipeline <- function(abun,
       calculated_balances$negligible_nodes <- c()
     }
     
-    pairwise_node_out <- pairwise_mean_direction_and_wilcoxon(calculated_balances$balances,
-                                                              group1_samples,
-                                                              group2_samples,
-                                                              skip_wilcoxon=TRUE)
+    if (! is.null(manual_BSN_dir)) {
+      pairwise_node_out <- list(mean_direction = manual_BSN_dir)
+    } else {
+      pairwise_node_out <- pairwise_mean_direction_and_wilcoxon(calculated_balances$balances,
+                                                                group1_samples,
+                                                                group2_samples,
+                                                                corr_method=BSN_correction,
+                                                                skip_wilcoxon=TRUE)
+    }
+
   }
   
-  if(verbose) { message("Identifying enriched functions at all non-negligible nodes.") }
+  if (verbose) { message("Identifying enriched functions at all non-negligible nodes.") }
   
   all_node_enriched_funcs <- parallel::mclapply(names(calculated_balances$balances),
                                           function(x) {
@@ -301,7 +316,7 @@ POMS_pipeline <- function(abun,
   }
   
   results <- list(results=summary_df,
-                  BSNs=BSNs,
+                  BSNs=pairwise_node_out$mean_direction[BSNs],
                   balances=calculated_balances)
   
   results[["multinomial_exp_prop"]] <- multinomial_exp_prop
@@ -332,6 +347,7 @@ check_POMS_pipeline_args <- function(abun,
                                      pseudocount,
                                      manual_BSNs,
                                      manual_balances,
+                                     manual_BSN_dir,
                                      min_num_tips,
                                      min_func_instances,
                                      min_func_prop,
@@ -349,20 +365,44 @@ check_POMS_pipeline_args <- function(abun,
     stop("Stopping - arguments manual_BSNs and manual_balances either both need to be given or neither should be specified.")
   }
 
+  if (! is.null(manual_BSN_dir) && is.null(manual_BSNs)) {
+    stop("Stopping - the manual_BSN_dir argument can only be set if the manual_BSNs argument is set as well.") 
+  }
+  
   if ((! is.null(manual_BSNs)) && (length(manual_BSNs) == 0)) { stop("Stopping - vector specified for manual_BSNs argument is empty.") }
 
   if ((! is.null(manual_BSNs)) && (! is.null(manual_balances))) {
     
-    if (length(which(manual_BSNs %in% names(manual_balances$balances))) != length(manual_BSNs)) {
+    if (! is.null(manual_BSN_dir)) {
+
+      if (length(group1_samples) > 0 || length(group2_samples) > 0) {
+        stop("Stopping - group1_samples and group2_samples arguments should not be set when the manual_BSN_dir argument is specified.") 
+      }
+      
+      if (class(manual_BSN_dir) != "character") {
+        stop("Stopping - input to manual_BSN_dir argument needs to be a character vector.") 
+      }
+  
+      if (length(manual_BSN_dir) != length(manual_BSNs)) {
+        stop("Stopping - values for manual_BSN_dir and manual_BSNs should be vectors of the same length, but currently are not.")
+      }
+      
+      if (length(which(manual_BSNs %in% names(manual_BSN_dir))) < length(manual_BSNs)) {
+        stop("Stopping - all nodes in the manual_BSNs input must be present as names in manual_BSN_dir vector (when the manual_BSN_dir argument is used), but currently are not.")
+      }
+
+    }
+    
+    if (length(which(manual_BSNs %in% names(manual_balances))) != length(manual_BSNs)) {
       stop("Stopping - not all nodes in manual_BSNs vector are in in manual_balances") 
     }
     
     if (! "node.label" %in% names(tree)) {
-      stop("Stopping - node labels must be present in tree if manual balances are specificed.") 
+      stop("Stopping - node labels must be present in tree if manual balances (i.e., manual_balances argument) are specificed.") 
     }
     
-    if (length(which(! names(manual_balances$balances) %in% tree$node.label)) > 0) {
-      stop("Stopping - some balance labels (in manual input) are missing from tree node labels.") 
+    if (length(which(! names(manual_balances) %in% tree$node.label)) > 0) {
+      stop("Stopping - some balance labels (in manually input manual_balances argument) are missing from tree node labels.") 
     }
     
   }
@@ -371,14 +411,16 @@ check_POMS_pipeline_args <- function(abun,
   if (class(func) != "data.frame") { stop("Stopping - argument func needs to be of the class data.frame.") }
   if (class(tree) != "phylo") { stop("Stopping - argument phylo needs to be of the class phylo.") }
 
-  if (class(group1_samples) != "character") { stop("Stopping - argument group1_samples needs to be of the class character.") }
-  if (class(group2_samples) != "character") { stop("Stopping - argument group2_samples needs to be of the class character.") }
-  if (length(group1_samples) == 0) { stop("Stopping - argument group1_samples is of length 0.") }
-  if (length(group2_samples) == 0) { stop("Stopping - argument group2_samples is of length 0.") }
-  if (length(which(group1_samples %in% colnames(abun))) != length(group1_samples)) { stop("Stopping - not all group1_samples match columns of abun argument.") }
-  if (length(which(group2_samples %in% colnames(abun))) != length(group2_samples)) { stop("Stopping - not all group2_samples match columns of abun argument.") }
-  if (length(which(group1_samples %in% group2_samples)) > 0) { stop("Stopping - at least one sample overlaps between group1 and group2.") }
-  
+  if (is.null(manual_BSN_dir)) {
+    if (class(group1_samples) != "character") { stop("Stopping - argument group1_samples needs to be of the class character.") }
+    if (class(group2_samples) != "character") { stop("Stopping - argument group2_samples needs to be of the class character.") }
+    if (length(group1_samples) == 0) { stop("Stopping - argument group1_samples is of length 0.") }
+    if (length(group2_samples) == 0) { stop("Stopping - argument group2_samples is of length 0.") }
+    if (length(which(group1_samples %in% colnames(abun))) != length(group1_samples)) { stop("Stopping - not all group1_samples match columns of abun argument.") }
+    if (length(which(group2_samples %in% colnames(abun))) != length(group2_samples)) { stop("Stopping - not all group2_samples match columns of abun argument.") }
+    if (length(which(group1_samples %in% group2_samples)) > 0) { stop("Stopping - at least one sample overlaps between group1_samples and group2_samples, but these should be non-overlapping sets.") }
+  }
+
   if ((class(ncores) != "integer") && (class(ncores) != "numeric")) { stop("Stopping - ncores argument needs to be of class numeric or integer.") }
   if (ncores <= 0) { stop("Stopping - ncores argument needs to be higher than 0.") }
 
@@ -406,11 +448,16 @@ check_POMS_pipeline_args <- function(abun,
   
   if (! is.logical(verbose)) { stop("Stopping - verbose argument needs to be TRUE or FALSE.") }
 
-  return(list(group1_samples=group1_samples,
+  return(list(abun=abun,
+              func=func,
+              tree=tree,
+              group1_samples=group1_samples,
               group2_samples=group2_samples,
               ncores=ncores,
               pseudocount=pseudocount,
               manual_BSNs=manual_BSNs,
+              manual_balances=manual_balances,
+              manual_BSN_dir=manual_BSN_dir,
               min_num_tips=min_num_tips,
               min_func_instances=min_func_instances,
               min_func_prop=min_func_prop,

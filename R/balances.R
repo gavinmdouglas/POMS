@@ -161,7 +161,7 @@ abun_isometric_log_ratios <- function(abun_table, set1_features, set2_features, 
 #' "negligible_nodes": character vector of node labels where there are fewer tips on either side of the node than specified by the "min_num_tips" argument.
 #' 
 #' @export
-compute_node_balances <- function(tree, abun_table, min_num_tips=5, ncores=1, pseudocount=NULL, subset_to_test=NULL) {
+compute_node_balances <- function(tree, abun_table, min_num_tips=10, ncores=1, pseudocount=NULL, subset_to_test=NULL) {
   
   if (is.null(tree$node.label)) {
     stop("Stopping - input tree does not have any node labels.") 
