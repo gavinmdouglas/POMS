@@ -83,18 +83,18 @@
 #' @param detailed_output Boolean flag to indicate that several intermediate objects should be included in the final output.
 #' This is useful when troubleshooting issues, but is not expected to be useful for most users.
 #' The additional results include "balance_comparisons" (summary of Wilcoxon tests on balances),
-#' "func_enrichments" (Fisher's exact test output for all functions at each node),
-#' "tree" (the prepped tree used by the pipeline, including the added node labels if a tree lacking labels was provided),
+#' "func_enrichments" (Fisher's exact test output for all functions at each node), and
 #' "input_param" (a list containing the input parameters specified).
 #'
 #' @param verbose Boolean flag to indicate that log information should be written to the console, to help keep track of the pipeline's progress.
 #' 
 #' @return A list containing at minimum these elements:\cr\cr
-#' "results" - dataframe with each tested function as a row and the numbers of FSNs of each type as columns, as well as the multinomial test output.\cr\cr
-#' "balances" - list of the sample balances at each tested node (including non-significant nodes).\cr\cr
-#' "BSNs" - character vector with BSNs as names and values of \"group1\" and \"group2\" to indicate for which sample group (or other binary division) the sample balances were higher\cr\cr
-#' "FSNs_summary" - list containing each tested function as a separate element. For functions with FSNs, will provide the node labels for nodes in each category of the multinomial test.
-#' 
+#' - results: dataframe with each tested function as a row and the numbers of FSNs of each type as columns, as well as the multinomial test output.\cr\cr
+#' - balances: list of the sample balances at each tested node (including non-significant nodes).\cr\cr
+#' - BSNs: character vector with BSNs as names and values of \"group1\" and \"group2\" to indicate for which sample group (or other binary division) the sample balances were higher\cr\cr
+#' - FSNs_summary: list containing each tested function as a separate element. For functions with FSNs, will provide the node labels for nodes in each category of the multinomial test.
+#' - tree: the prepped tree used by the pipeline, including the added node labels if a tree lacking labels was provided.
+
 #' @export
 POMS_pipeline <- function(abun,
                           func,
@@ -320,8 +320,8 @@ POMS_pipeline <- function(abun,
                   balances=calculated_balances)
   
   results[["multinomial_exp_prop"]] <- multinomial_exp_prop
-  
   results[["FSNs_summary"]] <- func_summaries
+  results[["tree"]] <- tree
   
   if (detailed_output) {
       # Restrict vector of mean directions to significant nodes only to avoid confusion.
@@ -329,7 +329,6 @@ POMS_pipeline <- function(abun,
 
       results[["balance_comparisons"]] <- pairwise_node_out
       results[["func_enrichments"]] <- all_node_enriched_funcs
-      results[["tree"]] <- tree
       results[["input_param"]] <- input_param
   }
   
