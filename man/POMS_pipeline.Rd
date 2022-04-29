@@ -96,18 +96,23 @@ Must be a p.adjust option.}
 \item{detailed_output}{Boolean flag to indicate that several intermediate objects should be included in the final output.
 This is useful when troubleshooting issues, but is not expected to be useful for most users.
 The additional results include "balance_comparisons" (summary of Wilcoxon tests on balances),
-"func_enrichments" (Fisher's exact test output for all functions at each node),
-"tree" (the prepped tree used by the pipeline, including the added node labels if a tree lacking labels was provided),
+"func_enrichments" (Fisher's exact test output for all functions at each node), and
 "input_param" (a list containing the input parameters specified).}
 
 \item{verbose}{Boolean flag to indicate that log information should be written to the console, to help keep track of the pipeline's progress.}
 }
 \value{
 A list containing at minimum these elements:\cr\cr
-"results" - dataframe with each tested function as a row and the numbers of FSNs of each type as columns, as well as the multinomial test output.\cr\cr
-"balances" - list of the sample balances at each tested node (including non-significant nodes).\cr\cr
-"BSNs" - character vector with BSNs as names and values of \"group1\" and \"group2\" to indicate for which sample group (or other binary division) the sample balances were higher\cr\cr
-"FSNs_summary" - list containing each tested function as a separate element. For functions with FSNs, will provide the node labels for nodes in each category of the multinomial test.
+\itemize{
+\item results: dataframe with each tested function as a row and the numbers of FSNs of each type as columns, as well as the multinomial test output.\cr\cr
+\item balance_info: list containing the tips underlying each node, which were what the balances are based on, the balances themselves at each tested node,
+and the set of nodes that were determined to be negligible due to having too few underlying tips. Note that the balances and udnerlying tips are provided for
+all non-negligible (i.e., tested) nodes, not just those identified as BSNs. \cr\cr
+\item BSNs: character vector with BSNs as names and values of \"group1\" and \"group2\" to indicate for which sample group (or other binary division) the sample balances were higher\cr\cr
+\item FSNs_summary: list containing each tested function as a separate element. For functions with FSNs, will provide the labels for nodes in each category of the multinomial test.
+\item tree: the prepped tree used by the pipeline, including the added node labels if a tree lacking labels was provided. This tree will also be subset to only those tips found in the
+abundance table, and midpoint rooted (if it was not already rooted).
+}
 }
 \description{
 See details below.\cr

@@ -19,6 +19,8 @@ filter_rare_table_cols(
 
 \item{min_nonzero_prop}{Min proportion of cells in column that must be non-zero for column to be retained.}
 
+\item{drop_missing_rows}{Boolean flag to indicate whether rows with all zero values (after dropping columns based on specified cut-offs) should be removed.}
+
 \item{verbose}{Boolean flag to indicate that the number of columns removed should be written to the console.}
 }
 \value{

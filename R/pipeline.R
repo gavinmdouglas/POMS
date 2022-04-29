@@ -90,10 +90,13 @@
 #' 
 #' @return A list containing at minimum these elements:\cr\cr
 #' - results: dataframe with each tested function as a row and the numbers of FSNs of each type as columns, as well as the multinomial test output.\cr\cr
-#' - balances: list of the sample balances at each tested node (including non-significant nodes).\cr\cr
+#' - balance_info: list containing the tips underlying each node, which were what the balances are based on, the balances themselves at each tested node,
+#' and the set of nodes that were determined to be negligible due to having too few underlying tips. Note that the balances and udnerlying tips are provided for
+#' all non-negligible (i.e., tested) nodes, not just those identified as BSNs. \cr\cr
 #' - BSNs: character vector with BSNs as names and values of \"group1\" and \"group2\" to indicate for which sample group (or other binary division) the sample balances were higher\cr\cr
-#' - FSNs_summary: list containing each tested function as a separate element. For functions with FSNs, will provide the node labels for nodes in each category of the multinomial test.
-#' - tree: the prepped tree used by the pipeline, including the added node labels if a tree lacking labels was provided.
+#' - FSNs_summary: list containing each tested function as a separate element. For functions with FSNs, will provide the labels for nodes in each category of the multinomial test.
+#' - tree: the prepped tree used by the pipeline, including the added node labels if a tree lacking labels was provided. This tree will also be subset to only those tips found in the
+#' abundance table, and midpoint rooted (if it was not already rooted).
 
 #' @export
 POMS_pipeline <- function(abun,
@@ -317,7 +320,7 @@ POMS_pipeline <- function(abun,
   
   results <- list(results=summary_df,
                   BSNs=pairwise_node_out$mean_direction[BSNs],
-                  balances=calculated_balances)
+                  balance_info=calculated_balances)
   
   results[["multinomial_exp_prop"]] <- multinomial_exp_prop
   results[["FSNs_summary"]] <- func_summaries

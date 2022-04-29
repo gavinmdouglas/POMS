@@ -142,3 +142,31 @@ test_that("correct error occurs when input tree is missing node labels when manu
                                       regexp = "Stopping - node labels must be present in tree if manual balances \\(i.e., manual_balances argument\\) are specificed.")
 })
 
+
+test_that("prep_func_node_info works as expected with pipeline output", {
+  
+  ex_basic_output <- POMS_pipeline(abun = ex_taxa_abun,
+                                   func = ex_func,
+                                   tree = ex_tree_wo_label,
+                                   group1_samples = ex_group1,
+                                   group2_samples = ex_group2,
+                                   ncores = 1,
+                                   min_num_tips = 4,
+                                   multinomial_min_FSNs = 3,
+                                   min_func_instances = 0)
+  
+  K07106_node_info <- prep_func_node_info(POMS_output = ex_basic_output,
+                                          func_id = "K07106",
+                                          taxa_table = NULL)
+  
+  expected_node_info_wo_tree <- list(FSNs_group1_enrich_i = c(78, 80),
+                                     FSNs_group2_enrich_i = 61,
+                                     FSNs_at_nonBSNs_i = 93,
+                                     all_FSNs_i = c(78, 80, 61, 93),
+                                     all_BSNs_i = c(61, 62, 73, 77, 78, 80, 92, 106),
+                                     BSNs_at_nonFSNs_i = c(62, 73, 77, 92, 106),
+                                     tested_nodes_i = c(61, 62, 73, 77, 78, 80, 85, 92, 93, 106))
+  
+  expect_equal(K07106_node_info[names(expected_node_info_wo_tree)], expected_node_info_wo_tree)
+})
+
