@@ -1,6 +1,6 @@
-#' Two-group POMS pipeline
+#' Key function to run POMS pipeline.
 #'
-#' Key function to run POMS pipeline. See details below.\cr
+#' See details below.\cr
 #' 
 #' This function will identify significant nodes based on sample balances using a Wilcoxon test by default, or significant nodes can be specified.
 #' Significant nodes are referred to as Balance-Significant Nodes (BSNs).\cr

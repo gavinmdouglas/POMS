@@ -2,7 +2,7 @@
 % Please edit documentation in R/pipeline.R
 \name{POMS_pipeline}
 \alias{POMS_pipeline}
-\title{Two-group POMS pipeline}
+\title{Key function to run POMS pipeline.}
 \usage{
 POMS_pipeline(
   abun,
@@ -110,7 +110,7 @@ A list containing at minimum these elements:\cr\cr
 "FSNs_summary" - list containing each tested function as a separate element. For functions with FSNs, will provide the node labels for nodes in each category of the multinomial test.
 }
 \description{
-Key function to run POMS pipeline. See details below.\cr
+See details below.\cr
 }
 \details{
 This function will identify significant nodes based on sample balances using a Wilcoxon test by default, or significant nodes can be specified.
