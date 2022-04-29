@@ -63,9 +63,5 @@ node_func_fisher <- function(node, in_tree, in_func, higher_group, add_pseudocou
   return(node_fisher_tests)
 }
 
-calc_OR <- function(exposed_pos, exposed_neg, control_pos, control_neg) {
-  return((exposed_pos / exposed_neg) / (control_pos / control_neg))  
-}
-
 
 
