@@ -125,38 +125,6 @@ subset_by_col_and_filt <- function(in_tab, col2keep, verbose = TRUE) {
 }
 
 
-prep_tree_sig_nodes <- function(in_list, taxa_table) {
-  
-  all_sig_nodes <- c()
-  for(func in names(in_list$out_list)) {
-    all_sig_nodes <- c(all_sig_nodes,
-                       in_list$out_list[[func]]$positive_nodes,
-                       in_list$out_list[[func]]$negative_nodes)
-  }
-  
-  all_sig_nodes <- all_sig_nodes[-which(duplicated(all_sig_nodes))]
-  
-  sig_node_taxa <- list()
-  
-  for(node in all_sig_nodes) {
-    sig_node_taxa[[node]] <- node_taxa(lhs_features = in_list$balances_info$features[[node]]$lhs,
-                                               rhs_features = in_list$balances_info$features[[node]]$rhs,
-                                               taxa = taxa_table)
-  }
-  
-  tree_sig_subset <- in_list$tree
-  nodes2ignore <- which(! tree_sig_subset$node.label %in% all_sig_nodes)
-  for(node in all_sig_nodes) {
-    tree_sig_subset$node.label[which(tree_sig_subset$node.label == node)] <- sig_node_taxa[[node]]
-  }
-  tree_sig_subset$node.label[nodes2ignore] <- ""
-  
-  all_sig_nodes_i <- which(tree_sig_subset$node.label != "") + length(tree_sig_subset$tip.label)
-  
-  return(list(prepped_tree=tree_sig_subset, nodes2plot=all_sig_nodes_i))
-}
-
-
 prep_tree <- function(phy, tips2keep) {
 
   # Function to subset tree to specified tips only.
