@@ -2,18 +2,19 @@
 % Please edit documentation in R/pipeline.R
 \name{POMS_pipeline}
 \alias{POMS_pipeline}
-\title{Two-group POMS pipeline}
+\title{Main function to run POMS pipeline}
 \usage{
 POMS_pipeline(
   abun,
   func,
-  phylogeny,
+  tree,
   group1_samples = NULL,
   group2_samples = NULL,
   ncores = 1,
   pseudocount = 1,
-  significant_nodes = NULL,
-  tested_nodes = NULL,
+  manual_BSNs = NULL,
+  manual_balances = NULL,
+  manual_BSN_dir = NULL,
   min_num_tips = 10,
   min_func_instances = 10,
   min_func_prop = 0.001,
@@ -29,87 +30,112 @@ POMS_pipeline(
 )
 }
 \arguments{
-\item{abun}{Dataframe of abundances of taxa which are at the tips of the input phylogeny, which would usually be individual genomes.
-The taxa should be the rows and the samples the columns.}
+\item{abun}{dataframe of taxa abundances that are at the tips of the input tree. These taxa are usually individual genomes.
+The taxa need to be the rows and the samples the columns.}
 
-\item{func}{Dataframe of the number of copies of each function that are encoded by each input taxon.
+\item{func}{dataframe of the number of copies of each function that are encoded by each input taxon.
 This pipeline only considers the presence/absence of functions across taxa.
-Taxa (with rownames intersecting with the "abun" table) should be the rows and the functions should be the columns.}
+Taxa (with row names intersecting with the "abun" table) should be the rows and the functions should be the columns.}
 
-\item{phylogeny}{Phylo object with tip labels that match the rownames of the "abun" and "func" tables.
-This object is usually a newick tree that has been read into R with the ape R package.}
+\item{tree}{phylo object with tip labels that match the row names of the "abun" and "func" tables.
+This object is usually based on a newick-formatted tree that has been read into R with the ape R package.}
 
-\item{group1_samples}{Character vector of column names of "abun" table that correspond to the first sample group.
-This grouping is used for testing for significant sample balances at each node.}
+\item{group1_samples}{character vector of column names of "abun" table that correspond to the first sample group.
+This grouping is used for testing for significant sample balances at each node.
+Required unless the "manual_BSN_dir" argument is set (i.e., if the binary directions of BSNs are specified manually).}
 
-\item{group2_samples}{Same as "group1_samples", but corresponding to the second sample group.}
+\item{group2_samples}{same as "group1_samples", but corresponding to the second sample group.}
 
-\item{ncores}{Integer specifying how many cores to run sections of pipeline that are parallelized.}
+\item{ncores}{integer specifying how many cores to use for parallelized sections of pipeline.}
 
-\item{pseudocount}{Number added to all cells of "abun" table to avoid 0 values.
-Set this to be 0 if this is not desired, although there will be issues with the balance tree approach if any 0's are present.}
+\item{pseudocount}{number added to all cells of "abun" table to avoid 0 values.
+Set this to be 0 if this is not desired. Note that there will be issues with the balance tree approach if any 0's are present.}
 
-\item{significant_nodes}{Optional vector of node names that match node labels of input phylogeny.
-These nodes will be considered the significant balance tree set, and the Wilcoxon tests will not be run.
+\item{manual_BSNs}{optional vector of node names that match node labels of input tree.
+These nodes will be considered the set of balance-significant nodes, and the Wilcoxon tests will not be run.
 The group means of the balances at each node will still be used to determine which group has higher values.
-Note this requires that "tested_nodes" is also specified.}
+Note this requires that the "manual_balances" argument is also specified.}
 
-\item{tested_nodes}{Optional vector of node names which represent all tested nodes that resulted in the input to the significant_nodes vector.
-I.e., this vector must include all names in the significant_nodes vector, but also all non-significant tested nodes as well.}
+\item{manual_balances}{optional list of balance values which represent the balances at all tested nodes that resulted in the input to the manual_BSNs vector.
+This list must include balances for all nodes in the manual_BSNs vector, but also all non-significant tested nodes as well.
+These node labels must all be present in the input tree.
+The required list format is the "balances" object in the output of compute_node_balances.
+Note, however, that any approach for computing balances could be used, as long as they are in this list format.}
 
-\item{min_num_tips}{The minimum number of tips on each side of a node that is required that node to be retained for the analysis.
-Ignored if significant nodes are specified manually.}
+\item{manual_BSN_dir}{optional character vector specifying "group1" or "group2", depending on the direction of the BSN difference.
+This must be a named vector, with all names matching the set of nodes specified by the manual_BSNs argument.
+Although this requires that the exact labels "group1" or "group2" are specified, these categories could represent different binary divisions rather than strict sample groups.
+For instance, "group1" could be used to represent nodes where sample balances are positively associated with a continuous variable (rather than a discrete grouping),
+whereas "group2" could represent nodes where sample balances are negatively associated.}
 
-\item{min_func_instances}{The minimum number of taxa that must encode the function for it to be retained for the analysis.}
+\item{min_num_tips}{minimum number of tips on each side of the nodes that is required for them to be retained in the analysis.
+This argument is ignored if significant nodes are specified manually.}
 
-\item{min_func_prop}{The minimum proportion of taxa that must encode the function for it to be retained for the analysis.}
+\item{min_func_instances}{minimum number of tips that must encode the function for it to be retained for the analysis.}
+
+\item{min_func_prop}{minimum proportion of tips that must encode the function for it to be retained for the analysis.}
 
 \item{multinomial_min_FSNs}{The minimum number of FSNs required to run a multinomial test for a given function.}
 
-\item{BSN_p_cutoff}{Significance cut-off for identifying BSNs.}
+\item{BSN_p_cutoff}{significance cut-off for identifying BSNs.}
 
-\item{BSN_correction}{Multiple-test correction to use on Wilcoxon test p-values when identifying BSNs.
-Must be a p.adjust option.}
+\item{BSN_correction}{multiple-test correction to use on Wilcoxon test p-values when identifying BSNs.
+Must be in p.adjust.methods.}
 
-\item{FSN_p_cutoff}{Significance cut-off for identifying FSNs.}
+\item{FSN_p_cutoff}{significance cut-off for identifying FSNs.}
 
-\item{FSN_correction}{Multiple-test correction to use on Fisher's exact test p-values when identifying FSNs.
-Must be a p.adjust option.}
+\item{FSN_correction}{multiple-test correction to use on Fisher's exact test p-values when identifying FSNs.
+Must be in p.adjust.methods.}
 
-\item{func_descrip_infile}{Optional path to mapfile of function ids (column 1) to descriptions (column 2).
+\item{func_descrip_infile}{optional path to mapfile of function ids (column 1) to descriptions (column 2).
 This should be tab-delimited with no header and one function per line.
 If this option is specified then an additional description column will be added to the output table.}
 
-\item{multinomial_correction}{Multiple-test correction to use on raw multinomial test p-values.
-Must be a p.adjust option.}
+\item{multinomial_correction}{multiple-test correction to use on raw multinomial test p-values.
+Must be in p.adjust.methods.}
 
-\item{detailed_output}{Boolean flag to indicate that several intermediate objects should be included in the final output.
-This is useful when troubleshooting issues, but is not expected to be useful for most users.}
+\item{detailed_output}{boolean flag to indicate that several intermediate objects should be included in the final output.
+This is useful when troubleshooting issues, but is not expected to be useful for most users.\cr
+The additional results include:
+\itemize{
+\item balance_comparisons (summary of Wilcoxon tests on balances)
+\item func_enrichments (Fisher's exact test output for all functions at each node)
+\item input_param (a list containing the specified input parameters)
+}}
 
-\item{verbose}{Boolean flag to indicate that log information should be written to the console, to help keep track of the pipeline's progress.}
+\item{verbose}{boolean flag to indicate that log information should be written to the console.}
 }
 \value{
-A list containing at minimum three elements:\cr\cr
-"summary_df" - a dataframe with each tested function as a row and the numbers of FSNs of each type as columns, as well as the multinomial test output.\cr\cr
-"balances_info" - a list of the sample balances at each node.\cr\cr
-"sig_nodes" - the labels of BSNs.\cr\cr
+list containing (at minimum) these elements:
+\itemize{
+\item results: dataframe with each tested function as a row and the numbers of FSNs of each type as columns, as well as the multinomial test output.
+\item balance_info: list containing the tips underlying each node, which were what the balances are based on, the balances themselves at each tested node,
+and the set of nodes that were determined to be negligible due to having too few underlying tips. Note that the balances and underlying tips are provided for
+all non-negligible (i.e., tested) nodes, not just those identified as BSNs.
+\item BSNs: character vector with BSNs as names and values of "group1" and "group2" to indicate for which sample group (or other binary division) the sample balances were higher.
+\item FSNs_summary: list containing each tested function as a separate element. The labels for nodes in each FSN category of the multinomial test are listed per function (or are empty if there were no such FSNs).
+\item tree: the prepped tree used by the pipeline, including the added node labels if a tree lacking labels was provided. This tree will also have been subset to only those tips found in the
+abundance table, and midpoint rooted (if it was not already rooted).
+}
 }
 \description{
-Key function to run POMS pipeline.\cr
+See details below.\cr
 }
 \details{
-This function will identify significant nodes based on sample balances using a Wilcoxon test by default, or significant nodes can be specified.
-Significant nodes are referred to as Balance-Significant Nodes (BSNs).\cr
+Identifies significant nodes based on sample balances, using a Wilcoxon test by default. Alternatively, significant nodes can be manually specified.
+Either way, significant nodes based on sample balances are referred to as Balance-Significant Nodes (BSNs).\cr
 
-Fisher's exact tests are run at each node in the tree with sufficient numbers of underlying tips on each side.
-Significant nodes based on this test are referred to as Function-Significant Nodes (FSNs).\cr
+Fisher's exact tests are run at each node in the tree with sufficient numbers of underlying tips on each side to test for functional enrichment.
+Significant nodes based on this test are referred to as Function-Significant Nodes (FSNs). The set of FSNs is determined independently for each tested function.\cr
 
 The key output is the tally of the intersecting nodes based on the sets of BSNs and FSNs.\cr
 
-Each FSN can be categorized in one of three ways:\cr
-(1) It does not intersect with any BSN.\cr
-(2) It intersects with a BSN and the functional enrichment is within the taxa that are relatively more abundant in group 1 samples.\cr
-(3) Same as #2, but enriched within taxa that are relatively more abundant in group 2 samples.\cr
+Each FSN can be categorized in one of three ways:
+\itemize{
+\item It does not intersect with any BSN.
+\item It intersects with a BSN and the functional enrichment is within the taxa that are relatively more abundant in group 1 samples.
+\item Same as the second point, but enriched within taxa that are relatively more abundant in group 2 samples.
+}
 
-A multinomial test is run to see if the tallies the FSNs in these three categories is significantly different from the random expectation.
+A multinomial test is run to see if the number of FSNs of each type is significantly different from the random expectation.
 }
