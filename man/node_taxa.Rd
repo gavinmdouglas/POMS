@@ -18,7 +18,7 @@ node_taxa(
 
 \item{taxon_labels}{Dataframe of taxa labels for tips in tree.
 All tips underlying the specified node must be present, although typically all tips in the tree would be present.
-Rownames must be the tip labels. The column names correspond to each taxonomic level, such as Kingdom, Phylum, etc.
+Row names must be the tip labels. The column names correspond to each taxonomic level, such as Kingdom, Phylum, etc.
 The actual column names do not matter: it is just important that the order of the taxonomic levels goes from the highest taxonomic level present (e.g., Kingdom), to the lowest taxonomic level present (e.g., Species).}
 
 \item{node_label}{Optional label of node for which the representative taxon label will be determined. Either this option or the node_index option must be specified, but not both.}
@@ -29,7 +29,8 @@ The actual column names do not matter: it is just important that the order of th
 
 \item{combine_labels}{Boolean flag for whether taxon labels should be combined, so that all higher taxonomic labels are included.
 Specifically, when TRUE, all higher labels are concatenated and delimited by "; ".
-E.g., rather than just the genus "Odoribacter" the label would be "Bacteria; Bacteroidetes; Bacteroidia; Bacteroidales; Porphyromonadaceae; Odoribacter".}
+E.g., rather than just the genus "Odoribacter" the label would be "Bacteria; Bacteroidetes; Bacteroidia; Bacteroidales; Porphyromonadaceae; Odoribacter",
+given that those were the labels of the higher taxonomic levels of that genus.}
 }
 \value{
 Character vector of size two with the representative taxon for tips on each side of the specified node.
@@ -45,5 +46,5 @@ least the specified proportion of tips (set by the "threshold" variable). Will r
 
 To clarify, the taxon that meets the threshold at the lowest possible taxonomic level will be used as the representative label.
 For example, if all the tips on one side of the node are members of the Pseudomonas genus, but only 60\% are members of the Pseudomonas aeruginosa species specifically,
-then Pseudomonas will be used as the representative label (based on a threshold of 0.75 or lower and assuming that species are the last column in the table).
+then Pseudomonas will be used as the representative label (based on a threshold of 0.75 or higher and assuming that species are the last column in the table).
 }

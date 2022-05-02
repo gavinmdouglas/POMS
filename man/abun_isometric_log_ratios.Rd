@@ -2,7 +2,7 @@
 % Please edit documentation in R/balances.R
 \name{abun_isometric_log_ratios}
 \alias{abun_isometric_log_ratios}
-\title{Computes isometric log ratio based on abundance of feature sets}
+\title{Compute isometric log ratio based on abundance of feature sets}
 \usage{
 abun_isometric_log_ratios(
   abun_table,
@@ -14,7 +14,7 @@ abun_isometric_log_ratios(
 \arguments{
 \item{abun_table}{Abundance table, e.g., read counts or relative abundance.
 Should be dataframe with column names correspond to sample names and row names corresponding to the feature ids.
-No 0 values are permitted unless the "pseudocount" option is set.}
+No 0's are permitted unless the "pseudocount" option is set.}
 
 \item{set1_features}{Features (rows of abundance table) that make up one side of the ratio to be computed (numerator).}
 
@@ -23,7 +23,7 @@ No 0 values are permitted unless the "pseudocount" option is set.}
 \item{pseudocount}{Constant to add to all abundance values, to ensure that there are only non-zero values. For read count data this would typically be 1.}
 }
 \value{
-Numeric vector of the computed isometric log ratio for each sample (taken to be each column in the input table).
+Numeric vector of the computed isometric log ratio for each sample (where samples are taken to be each column in the input table).
 }
 \description{
 Computes isometric log ratio between two sets of feature abundances, for each sample separately. Requires an abundance table,

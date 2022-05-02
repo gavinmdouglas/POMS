@@ -1,4 +1,3 @@
-# Test that the overall pipeline function is producing the expected output.
 
 library(POMS)
 
@@ -95,7 +94,7 @@ test_that("correct error occurs when significant nodes are not subset of tested 
                                       min_func_instances = 0,
                                       manual_BSNs = c("test1", "test2"),
                                       manual_balances = list("a"=as.numeric(), "b"=as.numeric(), "c"=as.numeric())),
-               regexp = "Stopping - not all nodes in manual_BSNs vector are in in manual_balances")
+               regexp = "not all nodes in manual_BSNs vector are present in manual_balances object")
 })
 
 

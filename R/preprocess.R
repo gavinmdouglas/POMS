@@ -4,17 +4,17 @@
 #' Note that this function is intended for positively-bounded data only (e.g., the function or taxon abundance tables), and will not work properly
 #' if the table contains negative values. Included in package simply to make running workflow easier.
 #'  
-#' @param in_tab Input dataframe
+#' @param in_tab input dataframe
 #'
-#' @param min_nonzero_count Min number of cells in column that must be non-zero for column to be retained.
+#' @param min_nonzero_count minimum number of cells in column that must be non-zero for column to be retained.
 #'
-#' @param min_nonzero_prop Min proportion of cells in column that must be non-zero for column to be retained.
+#' @param min_nonzero_prop minimum proportion of cells in column that must be non-zero for column to be retained.
 #'
-#' @param drop_missing_rows Boolean flag to indicate whether rows with all zero values (after dropping columns based on specified cut-offs) should be removed.
+#' @param drop_missing_rows boolean flag to indicate whether rows with all zero values (after dropping columns based on specified cut-offs) should be removed.
 #'
-#' @param verbose Boolean flag to indicate that the number of columns removed should be written to the console.
+#' @param verbose boolean flag to indicate that the number of columns removed should be written to the console.
 #'
-#' @return Dataframe with columns that did not meet the `min_nonzero_count` and/or `min_nonzero_prop` options removed.
+#' @return dataframe with columns that did not meet the `min_nonzero_count` and/or `min_nonzero_prop` options removed (and potentially rows dropped too if drop_missing_rows=TRUE).
 #'
 #' @export
 filter_rare_table_cols <- function(in_tab, min_nonzero_count, min_nonzero_prop, drop_missing_rows=TRUE, verbose=TRUE) {
@@ -29,7 +29,7 @@ filter_rare_table_cols <- function(in_tab, min_nonzero_count, min_nonzero_prop, 
   
   if(length(col2remove) > 0) {
     
-    if (verbose) { message(paste("Filtering out", as.character(length(col2remove)), "rare functions from input function table.", sep = " ")) }
+    if (verbose) { message("Filtering out ", length(col2remove), " rare functions from input function table.") }
 
     in_tab <- in_tab[, -col2remove, drop = FALSE]
     
@@ -45,7 +45,7 @@ filter_rare_table_cols <- function(in_tab, min_nonzero_count, min_nonzero_prop, 
      
     if (length(missing_rows) > 0) {
 
-      if (verbose) { message(paste("Filtering out", as.character(length(missing_rows)), "rows that contain no non-zero values.", sep = " ")) }
+      if (verbose) { message("Filtering out ", length(missing_rows), " rows that contain no non-zero values.") }
   
       in_tab <- in_tab[-missing_rows, , drop = FALSE]
     
@@ -57,17 +57,19 @@ filter_rare_table_cols <- function(in_tab, min_nonzero_count, min_nonzero_prop, 
   
 }
 
+
+
 #' Subset dataframe by column names and then post-filter
 #'
 #' Subset table by set of column names. After doing this, it will remove any rows and columns that are all 0's.
 #'  
-#' @param in_tab Input dataframe
+#' @param in_tab input dataframe
 #' 
-#' @param col2keep Column names to retain in output (as long as they have at least one non-zero value).
+#' @param col2keep column names to retain in output (as long as they have at least one non-zero value).
 #' 
-#' @param verbose Flag to indicate that the final number of rows and columns (as well as the number removed) should be reported.
+#' @param verbose flag to indicate that the final number of rows and columns (as well as the number removed) should be reported.
 #'
-#' @return Dataframe with subset of specified columns (if they have at least one non-zero value), also with all rows with no non-zero values removed.
+#' @return dataframe with subset of specified columns (if they have at least one non-zero value), also with rows that only contain 0's removed.
 #' 
 #' @export
 subset_by_col_and_filt <- function(in_tab, col2keep, verbose = TRUE) {
@@ -91,7 +93,7 @@ subset_by_col_and_filt <- function(in_tab, col2keep, verbose = TRUE) {
   in_tab <- in_tab[, col2keep, drop = FALSE]
   
   if (verbose) {
-    message(paste("Subset dataframe to", as.character(length(col2keep)), "specified columns.", sep = " ")) 
+    message("Subset dataframe to ", length(col2keep), " specified columns.") 
   }
   
   missing_rows <- which(rowSums(in_tab) == 0)
@@ -101,7 +103,7 @@ subset_by_col_and_filt <- function(in_tab, col2keep, verbose = TRUE) {
     in_tab <- in_tab[-missing_rows, ]
     
     if (verbose) {
-      message(paste("Removed", as.character(length(missing_rows)), "rows with no non-zero values.", sep = " "))
+      message("Removed ", length(missing_rows), " rows with no non-zero values.")
     }
   } else if (verbose) {
     message("All rows contain at least one non-zero value.")
@@ -110,34 +112,35 @@ subset_by_col_and_filt <- function(in_tab, col2keep, verbose = TRUE) {
   if (length(missing_cols) > 0) {
     in_tab <- in_tab[, -missing_cols]
     if (verbose) {
-      message(paste("Removed", as.character(length(missing_cols)), "columns with no non-zero values (of the set remaining after subsetting by column name).", sep = " "))
+      message("Removed ", length(missing_cols), " columns with no non-zero values (of the set remaining after subsetting by column name).")
     }
   } else if (verbose) {
       message("All remaining columns after subsetting by column name contain at least one non-zero value.")
   }
   
   if (verbose) {
-    message("Returning dataframe with ", as.character(nrow(in_tab)), "rows and", as.character(ncol(in_tab)), "columns.", sep = " ")
+    message("Returning dataframe with ", nrow(in_tab), " rows and ", ncol(in_tab), " columns.")
   }
   
   return(in_tab)
 
 }
 
-#' Get node indices of FSN and BSN categories across tree for a given function, typically for visualization
+#' Get node indices of FSN and BSN categories across tree for a given function
 #'
 #' Parse POMS_pipeline output to look at FSNs for a specific function (e.g., a specific gene family). Will also parse BSN information (which is not dependent on a particular function).
+#' This is convienient to do before plotting the distribution of FSNs and BSNs across the tree with the ggtree R package for instance.
 #' When a taxa label table is specified, labels of tested nodes in the tree (found in the POMS_pipeline output object) will be renamed to be the representative taxa on each side.
 #'  
-#' @param POMS_output Output object from POMS_pipeline function.
+#' @param POMS_output output object from POMS_pipeline function.
 #'
-#' @param func_id Label of function for which should FSNs should be parsed. Must be present in POMS_output$FSNs_summary.
+#' @param func_id label of function for which should FSNs should be parsed. Must be present in POMS_output$FSNs_summary.
 #'
-#' @param taxa_table Optional dataframe containing taxa labels for each tip of tree. Must be in same format as expected for node_taxa function.
+#' @param taxa_table optional dataframe containing taxa labels for each tip of tree. Must be in same format as expected for node_taxa function.
 #'
-#' @param taxa_threshold Float > 0.5 and <= 1.0 specifying the proportion of tips that must share a taxon label for it to be considered representative. Only relevant if taxa_table specified.
+#' @param taxa_threshold float > 0.5 and <= 1.0 specifying the proportion of tips that must share a taxon label for it to be considered representative. Only relevant if taxa_table specified.
 #'
-#' @param full_taxon_label Boolean flag for whether taxon labels should be combined, so that all higher taxonomic labels are included. Specifically, when TRUE, all higher labels are concatenated and delimited by "; ".
+#' @param full_taxon_label boolean flag for whether taxon labels should be combined, so that all higher taxonomic labels are included. Specifically, when TRUE, all higher labels are concatenated and delimited by "; ".
 #' E.g., rather than just the genus "Odoribacter" the label would be "Bacteria; Bacteroidetes; Bacteroidia; Bacteroidales; Porphyromonadaceae; Odoribacter". Only relevant if taxa_table specified.
 #'
 #' @return List containing final tree as well as indices of nodes corresponding to different FSN and BSN categories.
@@ -199,17 +202,16 @@ prep_func_node_info <- function(POMS_output, func_id, taxa_table = NULL, taxa_th
 
 prep_tree <- function(phy, tips2keep) {
 
-  # Function to subset tree to specified tips only.
-  # and run sanity checks.
+  # Function to subset tree to specified tips and run sanity checks.
   # Will midpoint root tree if necessary.
-  # Add node labels to tree before returning (unless they are already present).
+  # Will also add node labels to tree before returning (unless they are already present).
   
   tips2remove <- phy$tip.label[which(! phy$tip.label %in% tips2keep)]
   
   phy <- ape::drop.tip(phy = phy, tip = tips2remove)
   
   if(! ape::is.binary(phy)) {
-    stop("Tree is non-binary.")
+    stop("Stopping - input tree is non-binary.")
   }
   
   if(! ape::is.rooted(phy)) {
@@ -224,4 +226,3 @@ prep_tree <- function(phy, tips2keep) {
   return(phy)
 
 }
-

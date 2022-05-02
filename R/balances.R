@@ -9,13 +9,13 @@
 #' 
 #' To clarify, the taxon that meets the threshold at the lowest possible taxonomic level will be used as the representative label.
 #' For example, if all the tips on one side of the node are members of the Pseudomonas genus, but only 60% are members of the Pseudomonas aeruginosa species specifically,
-#' then Pseudomonas will be used as the representative label (based on a threshold of 0.75 or lower and assuming that species are the last column in the table).
+#' then Pseudomonas will be used as the representative label (based on a threshold of 0.75 or higher and assuming that species are the last column in the table).
 #'
 #' @param in_tree Phylo object
 #' 
 #' @param taxon_labels Dataframe of taxa labels for tips in tree.
 #' All tips underlying the specified node must be present, although typically all tips in the tree would be present.
-#' Rownames must be the tip labels. The column names correspond to each taxonomic level, such as Kingdom, Phylum, etc.
+#' Row names must be the tip labels. The column names correspond to each taxonomic level, such as Kingdom, Phylum, etc.
 #' The actual column names do not matter: it is just important that the order of the taxonomic levels goes from the highest taxonomic level present (e.g., Kingdom), to the lowest taxonomic level present (e.g., Species).
 #' 
 #' @param node_label Optional label of node for which the representative taxon label will be determined. Either this option or the node_index option must be specified, but not both.
@@ -26,7 +26,8 @@
 #'
 #' @param combine_labels Boolean flag for whether taxon labels should be combined, so that all higher taxonomic labels are included.
 #' Specifically, when TRUE, all higher labels are concatenated and delimited by "; ".
-#' E.g., rather than just the genus "Odoribacter" the label would be "Bacteria; Bacteroidetes; Bacteroidia; Bacteroidales; Porphyromonadaceae; Odoribacter".
+#' E.g., rather than just the genus "Odoribacter" the label would be "Bacteria; Bacteroidetes; Bacteroidia; Bacteroidales; Porphyromonadaceae; Odoribacter",
+#' given that those were the labels of the higher taxonomic levels of that genus.
 #'
 #' @return Character vector of size two with the representative taxon for tips on each side of the specified node.
 #' 
@@ -44,32 +45,32 @@ node_taxa <- function(in_tree, taxon_labels, node_label=NULL, node_index=NULL, t
   } else if (! is.null(node_index) & ! is.null(node_label)) {
     stop("Stopping - only one of node_index and node_label can be specified.")
   } else {
-    stop("Stopping - one of node_index and node_label must be specified.")
+    stop("Stopping - one of node_index or node_label must be specified.")
   }
   
   if (length(which(! c(underlying_tips$lhs, underlying_tips$rhs) %in% rownames(taxon_labels))) > 0) {
-    message("The following tips are missing as rownames from the taxa label table.")
+    message("The following tips are missing as row names from the taxa label table.")
     message(c(underlying_tips$lhs, underlying_tips$rhs)[which(! c(underlying_tips$lhs, underlying_tips$rhs) %in% rownames(taxon_labels))])
-    stop("Stopping - please make sure the rownames of the input taxa label table are the tip labels of the tree.")
+    stop("Stopping - please make sure the row names of the input taxa label table are the tip labels of the tree.")
   }
 
-  # Determine actual feature consensus step:
-  taxon_lhs <- feature_consensus_taxon(taxon_labels, underlying_tips$lhs, threshold, combine_labels)
-  taxon_rhs <- feature_consensus_taxon(taxon_labels, underlying_tips$rhs, threshold, combine_labels)
+  # Determine representative taxon.
+  taxon_lhs <- feature_consensus_taxon(taxa=taxon_labels, features=underlying_tips$lhs, threshold=threshold, combine_labels=combine_labels)
+  taxon_rhs <- feature_consensus_taxon(taxa=taxon_labels, features=underlying_tips$rhs, threshold=threshold, combine_labels=combine_labels)
   
   return(c(taxon_lhs, taxon_rhs))
 
 }
 
 
-#' Computes isometric log ratio based on abundance of feature sets
+#' Compute isometric log ratio based on abundance of feature sets
 #'
 #' Computes isometric log ratio between two sets of feature abundances, for each sample separately. Requires an abundance table,
 #' with two sets of features for which the ratio will be computed. 
 #'
 #' @param abun_table Abundance table, e.g., read counts or relative abundance.
 #' Should be dataframe with column names correspond to sample names and row names corresponding to the feature ids.
-#' No 0 values are permitted unless the "pseudocount" option is set.
+#' No 0's are permitted unless the "pseudocount" option is set.
 #'
 #' @param set1_features Features (rows of abundance table) that make up one side of the ratio to be computed (numerator).
 #' 
@@ -77,7 +78,7 @@ node_taxa <- function(in_tree, taxon_labels, node_label=NULL, node_index=NULL, t
 #' 
 #' @param pseudocount Constant to add to all abundance values, to ensure that there are only non-zero values. For read count data this would typically be 1.
 #' 
-#' @return Numeric vector of the computed isometric log ratio for each sample (taken to be each column in the input table).
+#' @return Numeric vector of the computed isometric log ratio for each sample (where samples are taken to be each column in the input table).
 #' 
 #' @export
 abun_isometric_log_ratios <- function(abun_table, set1_features, set2_features, pseudocount=NULL) {
@@ -94,7 +95,7 @@ abun_isometric_log_ratios <- function(abun_table, set1_features, set2_features, 
     stop("Stopping - at least one feature in the specified sets is not present as a row name in the abundance table.") 
   }
   
-  # Check that no features intersect.
+  # Check that no features intersect between the sets.
   if (length(which(set1_features %in% set2_features)) > 0) {
     stop("Stopping - at least one feature overlaps between the input sets.") 
   }
@@ -134,31 +135,34 @@ abun_isometric_log_ratios <- function(abun_table, set1_features, set2_features, 
 }
 
 
-#' Computes balances (i.e., isometric log ratios, for each sample separately) of feature abundances at each node in the tree.
+#' Compute balances at tree nodes. 
+#' 
+#' Computes balances (i.e., isometric log ratios, for each sample separately) of feature abundances at each non-negligible node in the tree.
 #' 
 #' @param tree Phylo object with tip labels matching row names of input abundance table. Note that node labels are required.
 #'
 #' @param abun_table Abundance table, e.g., read counts or relative abundance.
 #' Should be dataframe with column names correspond to sample names and row names corresponding to the tips of the tree.
-#' No 0 values are permitted unless the "pseudocount" option is set.
+#' No 0's are permitted unless the "pseudocount" option is set.
 #' 
-#' @param min_num_tips Minimum number of tips that must be found on each side of a node for it to be included.
+#' @param min_num_tips Minimum number of tips that must be found on each side of a node for it to be included (i.e., to be considered non-negligible).
 #'
 #' @param ncores Number of cores to use for steps of function that can be run in parallel.
 #'
-#' @param pseudocount Constant to add to all abundance values, to ensure that there are only non-zero values. For read count data this would typically be 1.
+#' @param pseudocount Optional constant to add to all abundance values, to ensure that there are only non-zero values. For read count data this would typically be 1.
 #'
-#' @param subset_to_test Vector of node labels (*not indices*) that correspond to the subset of nodes that should be considered.
+#' @param subset_to_test Optional vector of node labels (*not indices*) that correspond to the subset of nodes that should be considered.
 #' Note that balances will still only be computed at each of these nodes if they have a sufficient number of underlying tips (as specified by the "min_num_tips" argument).
+#' If this argument is not specified then all nodes will be considered.
 #'
-#' @return List containing three items:
+#' @return List containing three objects:
 #' 
 #' "tips_underlying_nodes": the tips on the left-hand side (lhs; the numerator) and right-hand side (rhs; the denominator) of each node.
 #' Note that which side of the node is denoted as the left-hand or right-hand side is arbitrary.
 #' 
-#' "balances": list with each non-negligible nodes as a separate element. The sample balances for each node are provided as a numeric vector within each of these elements.
+#' "balances": list with each non-negligible node as a separate element. The sample balances for each node are provided as a numeric vector within each of these elements.
 #'  
-#' "negligible_nodes": character vector of node labels where there are fewer tips on either side of the node than specified by the "min_num_tips" argument.
+#' "negligible_nodes": character vector of node labels considered negligible. This is defined as those with fewer tips on either side of the node than specified by the "min_num_tips" argument.
 #' 
 #' @export
 compute_node_balances <- function(tree, abun_table, min_num_tips=10, ncores=1, pseudocount=NULL, subset_to_test=NULL) {
@@ -229,14 +233,17 @@ compute_node_balances <- function(tree, abun_table, min_num_tips=10, ncores=1, p
     stop("Stopping - no non-negligible nodes remain after filtering based on mininum number of tips of left and right-hand side of each node.")
   }
   
-  return(list(tips_underlying_nodes=node_features, balances=balance_calc, negligible_nodes=negligible_nodes))
+  return(list(tips_underlying_nodes=node_features,
+              balances=balance_calc,
+              negligible_nodes=negligible_nodes))
   
 }
 
 
+# Get representative taxon label for set of features.
 feature_consensus_taxon <- function(taxa, features, threshold, combine_labels = FALSE) {
 
-  taxa_subset <- taxa[features, ]
+  taxa_subset <- taxa[features, , drop = FALSE]
   
   for (i in ncol(taxa_subset):1) {
     
@@ -261,7 +268,7 @@ feature_consensus_taxon <- function(taxa, features, threshold, combine_labels = 
 }
 
 
-
+# Get tips on left-hand and right-hand side of node.
 lhs_rhs_tips <- function(tree, node, get_node_index=FALSE) {
   
   if(get_node_index) {

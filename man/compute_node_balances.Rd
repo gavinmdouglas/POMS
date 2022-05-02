@@ -2,7 +2,7 @@
 % Please edit documentation in R/balances.R
 \name{compute_node_balances}
 \alias{compute_node_balances}
-\title{Computes balances (i.e., isometric log ratios, for each sample separately) of feature abundances at each node in the tree.}
+\title{Compute balances at tree nodes.}
 \usage{
 compute_node_balances(
   tree,
@@ -18,27 +18,28 @@ compute_node_balances(
 
 \item{abun_table}{Abundance table, e.g., read counts or relative abundance.
 Should be dataframe with column names correspond to sample names and row names corresponding to the tips of the tree.
-No 0 values are permitted unless the "pseudocount" option is set.}
+No 0's are permitted unless the "pseudocount" option is set.}
 
-\item{min_num_tips}{Minimum number of tips that must be found on each side of a node for it to be included.}
+\item{min_num_tips}{Minimum number of tips that must be found on each side of a node for it to be included (i.e., to be considered non-negligible).}
 
 \item{ncores}{Number of cores to use for steps of function that can be run in parallel.}
 
-\item{pseudocount}{Constant to add to all abundance values, to ensure that there are only non-zero values. For read count data this would typically be 1.}
+\item{pseudocount}{Optional constant to add to all abundance values, to ensure that there are only non-zero values. For read count data this would typically be 1.}
 
-\item{subset_to_test}{Vector of node labels (\emph{not indices}) that correspond to the subset of nodes that should be considered.
-Note that balances will still only be computed at each of these nodes if they have a sufficient number of underlying tips (as specified by the "min_num_tips" argument).}
+\item{subset_to_test}{Optional vector of node labels (\emph{not indices}) that correspond to the subset of nodes that should be considered.
+Note that balances will still only be computed at each of these nodes if they have a sufficient number of underlying tips (as specified by the "min_num_tips" argument).
+If this argument is not specified then all nodes will be considered.}
 }
 \value{
-List containing three items:
+List containing three objects:
 
 "tips_underlying_nodes": the tips on the left-hand side (lhs; the numerator) and right-hand side (rhs; the denominator) of each node.
 Note that which side of the node is denoted as the left-hand or right-hand side is arbitrary.
 
-"balances": list with each non-negligible nodes as a separate element. The sample balances for each node are provided as a numeric vector within each of these elements.
+"balances": list with each non-negligible node as a separate element. The sample balances for each node are provided as a numeric vector within each of these elements.
 
-"negligible_nodes": character vector of node labels where there are fewer tips on either side of the node than specified by the "min_num_tips" argument.
+"negligible_nodes": character vector of node labels considered negligible. This is defined as those with fewer tips on either side of the node than specified by the "min_num_tips" argument.
 }
 \description{
-Computes balances (i.e., isometric log ratios, for each sample separately) of feature abundances at each node in the tree.
+Computes balances (i.e., isometric log ratios, for each sample separately) of feature abundances at each non-negligible node in the tree.
 }

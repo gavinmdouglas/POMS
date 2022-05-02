@@ -1,3 +1,6 @@
+
+# Run Fisher's exact tests to test for differences in functional content between two feature sets (with corresponding annotations).
+
 feature_sets_func_fisher <- function(in_func, feature_set1, feature_set2, add_pseudocount=FALSE, multiple_test_corr="none") {
   
   in_func_set1 <- in_func[feature_set1, , drop = FALSE]
@@ -9,7 +12,7 @@ feature_sets_func_fisher <- function(in_func, feature_set1, feature_set2, add_ps
   set2_func_missing <- func_ids_all[which(colSums(in_func_set2[, func_ids_all, drop = FALSE]) == 0)]
   both_func_missing <- set1_func_missing[which(set1_func_missing %in% set2_func_missing)]
   
-  if(length(both_func_missing) > 0) {
+  if (length(both_func_missing) > 0) {
     in_func_set1 <- in_func_set1[, -which(colnames(in_func_set1) %in% both_func_missing), drop = FALSE]
     in_func_set2 <- in_func_set2[, -which(colnames(in_func_set2) %in% both_func_missing), drop = FALSE]
   }
@@ -31,9 +34,10 @@ feature_sets_func_fisher <- function(in_func, feature_set1, feature_set2, add_ps
       func_count_matrix <- func_count_matrix + 1
     }
     
-    func_count_fisher <- fisher.test(round(func_count_matrix))
+    func_count_fisher <- fisher.test(func_count_matrix)
     
-    fisher_out[func, ] <- c(func_count_matrix[1, 1], func_count_matrix[2,1], func_count_matrix[1, 2], func_count_matrix[2,2],
+    fisher_out[func, ] <- c(func_count_matrix[1, 1], func_count_matrix[2, 1],
+                            func_count_matrix[1, 2], func_count_matrix[2, 2],
                             func_count_fisher$estimate, func_count_fisher$p.value)
   }
   
@@ -42,6 +46,12 @@ feature_sets_func_fisher <- function(in_func, feature_set1, feature_set2, add_ps
   return(fisher_out)
 }
 
+
+
+# Wrapper for feature_sets_func_fisher that will run enrichment specifically for features sets on either side of a specific node in a tree.
+# Note that the higher_group setting refers to which group has higher balances at this node (if it is a BSN). The features are swapped around if group1
+# has relatively higher taxa abundanace in denominator (i.e., on the rhs), so that the OR's can be interpreted easily
+# (i.e., if the OR > 1 then that means it is enriched in taxa relatively more abundant in group1).
 
 node_func_fisher <- function(node, in_tree, in_func, higher_group, add_pseudocount=FALSE, multiple_test_corr="none") {
   
@@ -60,8 +70,6 @@ node_func_fisher <- function(node, in_tree, in_func, higher_group, add_pseudocou
                                                   add_pseudocount=add_pseudocount,
                                                   multiple_test_corr=multiple_test_corr)
   }
+  
   return(node_fisher_tests)
 }
-
-
-
