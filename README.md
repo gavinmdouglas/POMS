@@ -1,6 +1,4 @@
-<img src="images/logo.png?raw=true" width=50% height=50%>
-
-![Logo](images/logo.png?raw=true "POMS")
+<img src="images/logo.png?raw=true" alt="Logo" class="center" width=75% height=75%>
 
 This repository corresponds to the joint taxa-function analysis tool "Phylogenetic Organization of Metagenomic Signals" (POMS), which is described in this preprint:
 
