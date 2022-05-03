@@ -2,7 +2,7 @@
 % Please edit documentation in R/preprocess.R
 \name{prep_func_node_info}
 \alias{prep_func_node_info}
-\title{Get node indices of FSN and BSN categories across tree for a given function, typically for visualization}
+\title{Get node indices of FSN and BSN categories across tree for a given function}
 \usage{
 prep_func_node_info(
   POMS_output,
@@ -13,15 +13,15 @@ prep_func_node_info(
 )
 }
 \arguments{
-\item{POMS_output}{Output object from POMS_pipeline function.}
+\item{POMS_output}{output object from POMS_pipeline function.}
 
-\item{func_id}{Label of function for which should FSNs should be parsed. Must be present in POMS_output$FSNs_summary.}
+\item{func_id}{label of function for which should FSNs should be parsed. Must be present in POMS_output$FSNs_summary.}
 
-\item{taxa_table}{Optional dataframe containing taxa labels for each tip of tree. Must be in same format as expected for node_taxa function.}
+\item{taxa_table}{optional dataframe containing taxa labels for each tip of tree. Must be in same format as expected for node_taxa function.}
 
-\item{taxa_threshold}{Float > 0.5 and <= 1.0 specifying the proportion of tips that must share a taxon label for it to be considered representative. Only relevant if taxa_table specified.}
+\item{taxa_threshold}{float > 0.5 and <= 1.0 specifying the proportion of tips that must share a taxon label for it to be considered representative. Only relevant if taxa_table specified.}
 
-\item{full_taxon_label}{Boolean flag for whether taxon labels should be combined, so that all higher taxonomic labels are included. Specifically, when TRUE, all higher labels are concatenated and delimited by "; ".
+\item{full_taxon_label}{boolean flag for whether taxon labels should be combined, so that all higher taxonomic labels are included. Specifically, when TRUE, all higher labels are concatenated and delimited by "; ".
 E.g., rather than just the genus "Odoribacter" the label would be "Bacteria; Bacteroidetes; Bacteroidia; Bacteroidales; Porphyromonadaceae; Odoribacter". Only relevant if taxa_table specified.}
 }
 \value{
@@ -31,5 +31,6 @@ nodes that were tested (i.e., those that were non-negligible).
 }
 \description{
 Parse POMS_pipeline output to look at FSNs for a specific function (e.g., a specific gene family). Will also parse BSN information (which is not dependent on a particular function).
+This is convienient to do before plotting the distribution of FSNs and BSNs across the tree with the ggtree R package for instance.
 When a taxa label table is specified, labels of tested nodes in the tree (found in the POMS_pipeline output object) will be renamed to be the representative taxa on each side.
 }

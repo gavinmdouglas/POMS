@@ -13,18 +13,18 @@ filter_rare_table_cols(
 )
 }
 \arguments{
-\item{in_tab}{Input dataframe}
+\item{in_tab}{input dataframe}
 
-\item{min_nonzero_count}{Min number of cells in column that must be non-zero for column to be retained.}
+\item{min_nonzero_count}{minimum number of cells in column that must be non-zero for column to be retained.}
 
-\item{min_nonzero_prop}{Min proportion of cells in column that must be non-zero for column to be retained.}
+\item{min_nonzero_prop}{minimum proportion of cells in column that must be non-zero for column to be retained.}
 
-\item{drop_missing_rows}{Boolean flag to indicate whether rows with all zero values (after dropping columns based on specified cut-offs) should be removed.}
+\item{drop_missing_rows}{boolean flag to indicate whether rows with all zero values (after dropping columns based on specified cut-offs) should be removed.}
 
-\item{verbose}{Boolean flag to indicate that the number of columns removed should be written to the console.}
+\item{verbose}{boolean flag to indicate that the number of columns removed should be written to the console.}
 }
 \value{
-Dataframe with columns that did not meet the \code{min_nonzero_count} and/or \code{min_nonzero_prop} options removed.
+dataframe with columns that did not meet the \code{min_nonzero_count} and/or \code{min_nonzero_prop} options removed (and potentially rows dropped too if drop_missing_rows=TRUE).
 }
 \description{
 Filters dataframe columns with either a low absolute count of non-zero values or a low proportion of rows with non-zero counts.

@@ -7,14 +7,14 @@
 subset_by_col_and_filt(in_tab, col2keep, verbose = TRUE)
 }
 \arguments{
-\item{in_tab}{Input dataframe}
+\item{in_tab}{input dataframe}
 
-\item{col2keep}{Column names to retain in output (as long as they have at least one non-zero value).}
+\item{col2keep}{column names to retain in output (as long as they have at least one non-zero value).}
 
-\item{verbose}{Flag to indicate that the final number of rows and columns (as well as the number removed) should be reported.}
+\item{verbose}{flag to indicate that the final number of rows and columns (as well as the number removed) should be reported.}
 }
 \value{
-Dataframe with subset of specified columns (if they have at least one non-zero value), also with all rows with no non-zero values removed.
+dataframe with subset of specified columns (if they have at least one non-zero value), also with rows that only contain 0's removed.
 }
 \description{
 Subset table by set of column names. After doing this, it will remove any rows and columns that are all 0's.
