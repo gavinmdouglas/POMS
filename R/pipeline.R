@@ -92,14 +92,20 @@
 #' 
 #' @return list containing (at minimum) these elements:
 #' - results: dataframe with each tested function as a row and the numbers of FSNs of each type as columns, as well as the multinomial test output.
+#' 
 #' - balance_info: list containing the tips underlying each node, which were what the balances are based on, the balances themselves at each tested node,
 #' and the set of nodes that were determined to be negligible due to having too few underlying tips. Note that the balances and underlying tips are provided for
 #' all non-negligible (i.e., tested) nodes, not just those identified as BSNs.
+#' 
 #' - BSNs: character vector with BSNs as names and values of "group1" and "group2" to indicate for which sample group (or other binary division) the sample balances were higher.
+#' 
 #' - FSNs_summary: list containing each tested function as a separate element. The labels for nodes in each FSN category of the multinomial test are listed per function (or are empty if there were no such FSNs).
+
 #' - tree: the prepped tree used by the pipeline, including the added node labels if a tree lacking labels was provided. This tree will also have been subset to only those tips found in the
 #' abundance table, and midpoint rooted (if it was not already rooted).
 
+#' - multinomial_exp_prop: expected proportions of the three FSN categories used for multinomial test.
+#' 
 #' @export
 POMS_pipeline <- function(abun,
                           func,

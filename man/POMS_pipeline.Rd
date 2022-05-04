@@ -116,6 +116,7 @@ all non-negligible (i.e., tested) nodes, not just those identified as BSNs.
 \item FSNs_summary: list containing each tested function as a separate element. The labels for nodes in each FSN category of the multinomial test are listed per function (or are empty if there were no such FSNs).
 \item tree: the prepped tree used by the pipeline, including the added node labels if a tree lacking labels was provided. This tree will also have been subset to only those tips found in the
 abundance table, and midpoint rooted (if it was not already rooted).
+\item multinomial_exp_prop: expected proportions of the three FSN categories used for multinomial test.
 }
 }
 \description{
