@@ -23,7 +23,7 @@ Taxa (with row names intersecting with the "abun" table) should be the rows and 
 }
 \value{
 Dataframe summarizing the phylolm coefficients and model p-values for each y ~ function comparison.
-Will include the intercept, slope, and p-value for each case. Rows will be names for each function.
+Will include the intercept, slope, and p-value for each case. Row names will be function ids.
 }
 \description{
 Runs phylogenetic regression with phylolm on each function (or trait) in the specified function table.

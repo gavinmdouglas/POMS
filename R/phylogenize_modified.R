@@ -1,11 +1,56 @@
-# The code in this file was modified from https://bitbucket.org/pbradz/phylogenize/src/master/package/phylogenize/R/
-# Commit: 6f1bdba9c5a9ff04e90a8ad77bcee8ec9281730d
-# These algorithms were described in
-# Bradley et al. 2018. Phylogeny-corrected identification of microbial gene families relevant to human gut colonization. PLOS Computational Biology.
-# 10.1371/journal.pcbi.1006242.
+#' Calculate logit of a value or vector of values.
+#' This function was taken unchanged from the phylogenize R codebase.
+#' 
+#' @param x Numeric value, or numeric vector of numeric values.
+#' @export
+logit <- function(x) (log(x / (1 - x)))
 
-# Compute transformed prevalence.
-# Does not allow for multiple datasets as in the original phylogenize function.
+#' Calculate inverse-logit of a value or vector of values.
+#' This function was taken unchanged from the phylogenize R codebase.
+#' 
+#' @param x Numeric value, or numeric vector of numeric values.
+#' @export
+logistic <- function(x) exp(x) / (1 + exp(x))
+
+#' Apply a function to a vector of names, with the returned list having those
+#' names.
+#' This function was taken unchanged from the phylogenize R codebase.
+#'
+#' @param X Vector of names.
+#' @param FUN A function to apply to the names in \code{X} (typically using them
+#'     as list indices).
+#' @return A list of the results of applying \code{FUN} to \code{X}, with
+#'     \code{X} as the list elements' names.
+#' @keywords internal
+lapply.across.names <- function(X, FUN, ...) {
+  r <- lapply(X, FUN, ...)
+  names(r) <- X
+  r
+}
+
+#' Compute additive smoothed prevalence of features (e.g, taxa), restricted to samples of a particular metadata category.\cr
+#'
+#' This code replicates the prevalence score introduced in phylogenize. The code here is modified from the phylogenize code base 
+#' (https://bitbucket.org/pbradz/phylogenize/src/master/package/phylogenize/R/; commit 6f1bdba9c5a9ff04e90a8ad77bcee8ec9281730d).
+#' 
+#' This algorithm is descibed in detail in Bradley et al. 2018. Phylogeny-corrected identification of microbial gene families relevant to human gut colonization. PLOS Computational Biology.
+# 10.1371/journal.pcbi.1006242. Note that this version of the algorithm does not allow for multiple datasets.
+#'
+#' @param abun_table Abundance table to use for computing prevalence. Features must be rows and samples columns. All values greater than 0 will be interpreted as present.
+#' 
+#' @param meta_table Dataframe object containing metadata for all samples. Must include at least one column corresponding to the sample ids and one column containing the metadata of interest that will be focused on when computing prevalence.
+#' 
+#' @param focal_var_level length-one character vector specifying the variable value to restrict inferences of prevalence to. In other words, prevalence will be computed based on the sample set that contain this value of the variable of interest in the metadata table. 
+#' 
+#' @param var_colname length-one character vector specifying the name of column in the metadata table that contains the metadata of interest (e.g., where focal_var_level can be found).
+#' 
+#' @param sample_colname length-one character vector specifying the name of column in the metadata table that contains the sample ids.
+#' 
+#' @param silence_citation length-one Boolean vector specifying whether to silence message notifying user about phylogenize package and paper.
+#'
+#' @return Numeric vector with the normalized prevalence score for each input feature (i.e., for each row of abun_table).
+#' 
+#' @export
 prevalence_norm_logit <- function(abun_table,
                                   meta_table,
                                   focal_var_level,
@@ -26,8 +71,8 @@ prevalence_norm_logit <- function(abun_table,
     stop("Stopping - specified sample column name ", sample_colname, " not found in metadata table.")
   }
   
-  if (! focal_var_level %in% levels(meta_table[, var_colname])) {
-    stop("Stopping - variable level ", focal_var_level, " not found in specified metadata column.")
+  if (! focal_var_level %in% meta_table[, var_colname]) {
+    stop("Stopping - variable value ", focal_var_level, " not found in specified metadata column.")
   }
 
   focal_var_rows <- which(meta_table[, var_colname] == focal_var_level)
@@ -45,7 +90,7 @@ prevalence_norm_logit <- function(abun_table,
   taxa_norm_prevalence <- (1 + taxa_raw_prevalence) / (2 + num_samples)
 
   # Compute logit of these normalize prevalences and return.
-  return((log(taxa_norm_prevalence / (1 - taxa_norm_prevalence))))
+  return(logit(taxa_norm_prevalence))
 
 }
 
@@ -134,6 +179,29 @@ score.regularization <- function(mtx,
   return(c(fpr = fpr, pwr.hi = pwr.hi, pwr.lo = pwr.lo))
 }
 
+#' Get a distribution of environment prevalences from a matrix.
+#' This function was taken unchanged from the phylogenize R codebase.
+#' 
+#' This is used to optimize the value of the free parameter $b$ in
+#' \code{regularize.pET}.
+#'
+#' @param mtx A matrix of presence/absence values.
+#' @param ids A named factor assigning samples (matrix columns) to environments.
+#' @param fallback A two-element numeric vector, giving the beta parameters to
+#'     use if fitting fails.
+#' @return A best-fit of prevalences to a beta distribution.
+#' @keywords internal
+fit.beta.list <-  function(mtx, ids, fallback = c(NA, NA)) {
+  lapply(unique(ids), function(i) {
+    tryCatch(
+      MASS::fitdistr(densfun = "beta",
+                     start = list(shape1 = 1, shape2 = 1),
+                     apply(mtx[, which(ids == i), drop=FALSE], 1, function(x) {
+                       mean(c(x, 0, 1) > 0)
+                     }))$estimate,
+      error = function(e) fallback)
+  })
+}
 
 #' Based on a real presence/absence matrix, optimize the value of the
 #' regularization parameter $b$.
@@ -198,7 +266,7 @@ optimize_b_wrapper <- function(real_abun_table,
     }
   }
   
-  optimize(get.optim, bounds, maximum = TRUE)
+  suppressWarnings(optimize(get.optim, bounds, maximum = TRUE))
 
 }
 
@@ -221,7 +289,7 @@ optimize_b_wrapper <- function(real_abun_table,
 #'     probability of encountering a particular taxon, marginalized across
 #'     environments
 #' @keywords internal
-regularize_pET <- function(vec,
+regularize.pET <- function(vec,
                            env.ids,
                            which.env = 1,
                            prior = 0.05,
@@ -281,7 +349,31 @@ regularize_pET <- function(vec,
 `%btwn%` <- function(x, y) { (x > min(y)) & (x < max(y)) }
 
 
-# Modified version of calc.ess from phylogenize R package.
+#' Compute shrunken specificity score of a feature, which represents how the presence of a feature is associated with a given sample grouping.
+#'
+#' This code replicates the environmental specificity score introduced in phylogenize. The code here is modified from the phylogenize code base 
+#' (https://bitbucket.org/pbradz/phylogenize/src/master/package/phylogenize/R/; commit 6f1bdba9c5a9ff04e90a8ad77bcee8ec9281730d).
+#' 
+#' This algorithm is descibed in detail in Bradley et al. 2018. Phylogeny-corrected identification of microbial gene families relevant to human gut colonization. PLOS Computational Biology.
+# 10.1371/journal.pcbi.1006242.
+#'
+#' Note thee can be some random fluctuations between re-runs of this function. The differences are usually minor, but users are strongly suggested to set a random seed before use to ensure their workflow is reproducible.
+#'
+#' @param abun_table Abundance table to use for computing specificity Features must be rows and samples columns. All values greater than 0 will be interpreted as present.
+#' 
+#' @param meta_table Dataframe object containing metadata for all samples. Must include at least one column corresponding to the sample ids and one column containing the metadata of interest that will be focused on.
+#' 
+#' @param focal_var_level length-one character vector specifying the variable value to restrict inferences of prevalence to. In other words, prevalence will be computed based on the sample set that contain this value of the variable of interest in the metadata table. 
+#' 
+#' @param var_colname length-one character vector specifying the name of column in the metadata table that contains the metadata of interest (e.g., where focal_var_level can be found).
+#' 
+#' @param sample_colname length-one character vector specifying the name of column in the metadata table that contains the sample ids.
+#' 
+#' @param silence_citation length-one Boolean vector specifying whether to silence message notifying user about phylogenize package and paper.
+#'
+#' @return Numeric vector with the specificity score for each input feature (i.e., for each row of abun_table).
+#' 
+#' @export
 specificity_scores <- function(abun_table,
                                meta_table,
                                focal_var_level,
@@ -301,8 +393,8 @@ specificity_scores <- function(abun_table,
     stop("Stopping - specified sample column name ", sample_colname, " not found in metadata table.")
   }
   
-  if (! focal_var_level %in% levels(meta_table[, var_colname])) {
-    stop("Stopping - variable level ", focal_var_level, " not found in specified metadata column.")
+  if (! focal_var_level %in% meta_table[, var_colname]) {
+    stop("Stopping - variable value ", focal_var_level, " not found in specified metadata column.")
   }
   
   meta_table[, sample_colname] <- as.character(meta_table[, sample_colname])
@@ -325,7 +417,7 @@ specificity_scores <- function(abun_table,
                           function (sampleid) { meta_table_present[which(meta_table_present[, sample_colname] == sampleid), var_colname] })
   
   if (length(unique(sample_values)) < 2) {
-    stop("Stopping - only one variable level found after restricting to samples in the abundance table.")
+    stop("Stopping - only one unique variable value found after restricting to samples in the abundance table.")
   }
   
   tolerance <- prior * 0.01
