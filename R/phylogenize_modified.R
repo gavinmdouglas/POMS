@@ -1,27 +1,18 @@
 #' Calculate logit of a value or vector of values.
-#' This function was taken unchanged from the phylogenize R codebase.
-#' 
-#' @param x Numeric value, or numeric vector of numeric values.
-#' @export
+#' This function was taken unchanged from the phylogenize R codebase
+#' (except it is no longer exported).
+#'
 logit <- function(x) (log(x / (1 - x)))
 
 #' Calculate inverse-logit of a value or vector of values.
 #' This function was taken unchanged from the phylogenize R codebase.
-#' 
-#' @param x Numeric value, or numeric vector of numeric values.
-#' @export
+#' (except it is no longer exported).
 logistic <- function(x) exp(x) / (1 + exp(x))
 
 #' Apply a function to a vector of names, with the returned list having those
 #' names.
 #' This function was taken unchanged from the phylogenize R codebase.
-#'
-#' @param X Vector of names.
-#' @param FUN A function to apply to the names in \code{X} (typically using them
-#'     as list indices).
-#' @return A list of the results of applying \code{FUN} to \code{X}, with
-#'     \code{X} as the list elements' names.
-#' @keywords internal
+# (except the description lines were removed).
 lapply.across.names <- function(X, FUN, ...) {
   r <- lapply(X, FUN, ...)
   names(r) <- X
@@ -139,20 +130,7 @@ sim_presence_absence <- function(effect.size = 2,
 
 #' Score a simulated regularization by how well it recapitulates the ground truth.
 #' This function was taken unchanged from the phylogenize R codebase.
-#' 
-#' @param mtx A simulated matrix of presence/absences.
-#' @param ids A factor mapping samples to environments.
-#' @param real.fx A numeric vector giving "true" effect sizes.
-#' @param which.env String or numeric: in which environment is there an effect?
-#' @param prior Prior probability of encountering environment \code{which.env}.
-#' @param b Free parameter governing strength of regularization. Typically, this
-#'     function is called to evaluate different values of $b$.
-#' @param add.pc Boolean: should \code{regularize.pET} add a pseudocount?
-#' @param tol Numeric: values within \code{tol} of the prior will be considered
-#'     to be shrunk back to the prior completely.
-#' @return A vector. \code{fpr}: False positive rate; \code{pwr.hi}: power for
-#'     positive effect sizes; \code{pwr.lo}: power for negative effect sizes.
-#' @keywords internal
+# (except the description lines were removed).
 score.regularization <- function(mtx,
                                  ids,
                                  real.fx,
@@ -273,22 +251,7 @@ optimize_b_wrapper <- function(real_abun_table,
 
 #' Obtain a regularized estimate of specificity.
 #' This function was taken unchanged from the phylogenize R codebase.
-#' 
-#' @param vec A named numeric vector giving presence/absence across samples.
-#' @param env.ids A named factor assigning an environment to each sample (names).
-#' @param which.env A string: in which environment should specificity be calculated?
-#' @param prior Prior probability of \code{which.env}
-#' @param b Free parameter giving degree of regularization (see
-#'     \code{optimize.b.wrapper}).
-#' @param add.pc Boolean giving whether to add a pseudocount.
-#' @param min.limit Will not optimize below this value.
-#' @param max.limit Will not optimize above this value.
-#' @return A list. \code{x}: regularized specificity estimate; \code{p}:
-#'     regularized prevalence estimate; \code{x.init}: naive specificity
-#'     estimate; \code{p.init}: naive prevalence estimate; \code{pT}:
-#'     probability of encountering a particular taxon, marginalized across
-#'     environments
-#' @keywords internal
+# (except the description lines were removed).
 regularize.pET <- function(vec,
                            env.ids,
                            which.env = 1,
@@ -342,10 +305,7 @@ regularize.pET <- function(vec,
 
 #' Test whether a value is between two other values (non-inclusive).
 #' This function was taken unchanged from the phylogenize R codebase.
-#'
-#' @param x Value(s) to test (numeric vector).
-#' @param y Numeric vector of length 2, giving minimum and maximum values of \code{x}.
-#' @keywords internal
+# (except the description lines were removed).
 `%btwn%` <- function(x, y) { (x > min(y)) & (x < max(y)) }
 
 
