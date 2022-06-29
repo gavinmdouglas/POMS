@@ -7,13 +7,7 @@ This function was taken unchanged from the phylogenize R codebase.}
 \usage{
 x \%btwn\% y
 }
-\arguments{
-\item{x}{Value(s) to test (numeric vector).}
-
-\item{y}{Numeric vector of length 2, giving minimum and maximum values of \code{x}.}
-}
 \description{
 Test whether a value is between two other values (non-inclusive).
 This function was taken unchanged from the phylogenize R codebase.
 }
-\keyword{internal}

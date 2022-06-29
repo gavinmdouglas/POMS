@@ -17,31 +17,7 @@ score.regularization(
   ...
 )
 }
-\arguments{
-\item{mtx}{A simulated matrix of presence/absences.}
-
-\item{ids}{A factor mapping samples to environments.}
-
-\item{real.fx}{A numeric vector giving "true" effect sizes.}
-
-\item{which.env}{String or numeric: in which environment is there an effect?}
-
-\item{prior}{Prior probability of encountering environment \code{which.env}.}
-
-\item{b}{Free parameter governing strength of regularization. Typically, this
-function is called to evaluate different values of $b$.}
-
-\item{add.pc}{Boolean: should \code{regularize.pET} add a pseudocount?}
-
-\item{tol}{Numeric: values within \code{tol} of the prior will be considered
-to be shrunk back to the prior completely.}
-}
-\value{
-A vector. \code{fpr}: False positive rate; \code{pwr.hi}: power for
-positive effect sizes; \code{pwr.lo}: power for negative effect sizes.
-}
 \description{
 Score a simulated regularization by how well it recapitulates the ground truth.
 This function was taken unchanged from the phylogenize R codebase.
 }
-\keyword{internal}

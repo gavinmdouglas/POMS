@@ -8,19 +8,8 @@ This function was taken unchanged from the phylogenize R codebase.}
 \usage{
 lapply.across.names(X, FUN, ...)
 }
-\arguments{
-\item{X}{Vector of names.}
-
-\item{FUN}{A function to apply to the names in \code{X} (typically using them
-as list indices).}
-}
-\value{
-A list of the results of applying \code{FUN} to \code{X}, with
-\code{X} as the list elements' names.
-}
 \description{
 Apply a function to a vector of names, with the returned list having those
 names.
 This function was taken unchanged from the phylogenize R codebase.
 }
-\keyword{internal}

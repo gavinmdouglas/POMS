@@ -3,14 +3,13 @@
 \name{logit}
 \alias{logit}
 \title{Calculate logit of a value or vector of values.
-This function was taken unchanged from the phylogenize R codebase.}
+This function was taken unchanged from the phylogenize R codebase
+(except it is no longer exported).}
 \usage{
 logit(x)
 }
-\arguments{
-\item{x}{Numeric value, or numeric vector of numeric values.}
-}
 \description{
 Calculate logit of a value or vector of values.
-This function was taken unchanged from the phylogenize R codebase.
+This function was taken unchanged from the phylogenize R codebase
+(except it is no longer exported).
 }
