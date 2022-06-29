@@ -27,9 +27,9 @@ lapply.across.names <- function(X, FUN, ...) {
 #' This algorithm is descibed in detail in Bradley et al. 2018. Phylogeny-corrected identification of microbial gene families relevant to human gut colonization. PLOS Computational Biology.
 # 10.1371/journal.pcbi.1006242. Note that this version of the algorithm does not allow for multiple datasets.
 #'
-#' @param abun_table Abundance table to use for computing prevalence. Features must be rows and samples columns. All values greater than 0 will be interpreted as present.
+#' @param abun_table abundance table to use for computing prevalence. Features must be rows and samples columns. All values greater than 0 will be interpreted as present.
 #' 
-#' @param meta_table Dataframe object containing metadata for all samples. Must include at least one column corresponding to the sample ids and one column containing the metadata of interest that will be focused on when computing prevalence.
+#' @param meta_table dataframe object containing metadata for all samples. Must include at least one column corresponding to the sample ids and one column containing the metadata of interest that will be focused on when computing prevalence.
 #' 
 #' @param focal_var_level length-one character vector specifying the variable value to restrict inferences of prevalence to. In other words, prevalence will be computed based on the sample set that contain this value of the variable of interest in the metadata table. 
 #' 
@@ -52,6 +52,7 @@ prevalence_norm_logit <- function(abun_table,
   if (! silence_citation) {
     message("The prevalence calculations performed here are closely based on code distributed with the phylogenize package, which is under an MIT license.")
     message("If you use these normalized prevalence values, please cite the original authors: 10.1371/journal.pcbi.1006242.")
+    message("Silence this message with \"silence_citation = TRUE\".")
   }
 
   if (! var_colname %in% colnames(meta_table)) {
@@ -319,9 +320,9 @@ regularize.pET <- function(vec,
 #'
 #' Note thee can be some random fluctuations between re-runs of this function. The differences are usually minor, but users are strongly suggested to set a random seed before use to ensure their workflow is reproducible.
 #'
-#' @param abun_table Abundance table to use for computing specificity Features must be rows and samples columns. All values greater than 0 will be interpreted as present.
+#' @param abun_table abundance table to use for computing specificity Features must be rows and samples columns. All values greater than 0 will be interpreted as present.
 #' 
-#' @param meta_table Dataframe object containing metadata for all samples. Must include at least one column corresponding to the sample ids and one column containing the metadata of interest that will be focused on.
+#' @param meta_table dataframe object containing metadata for all samples. Must include at least one column corresponding to the sample ids and one column containing the metadata of interest that will be focused on.
 #' 
 #' @param focal_var_level length-one character vector specifying the variable value to restrict inferences of prevalence to. In other words, prevalence will be computed based on the sample set that contain this value of the variable of interest in the metadata table. 
 #' 
@@ -343,6 +344,7 @@ specificity_scores <- function(abun_table,
   if (! silence_citation) {
     message("The specificity score calculations performed here are closely based on code distributed with the phylogenize package, which is under an MIT license.")
     message("If you use these values, please cite the original authors: 10.1371/journal.pcbi.1006242.")
+    message("Silence this message with \"silence_citation = TRUE\".")
   }
 
   if (! var_colname %in% colnames(meta_table)) {

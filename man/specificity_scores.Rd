@@ -14,9 +14,9 @@ specificity_scores(
 )
 }
 \arguments{
-\item{abun_table}{Abundance table to use for computing specificity Features must be rows and samples columns. All values greater than 0 will be interpreted as present.}
+\item{abun_table}{abundance table to use for computing specificity Features must be rows and samples columns. All values greater than 0 will be interpreted as present.}
 
-\item{meta_table}{Dataframe object containing metadata for all samples. Must include at least one column corresponding to the sample ids and one column containing the metadata of interest that will be focused on.}
+\item{meta_table}{dataframe object containing metadata for all samples. Must include at least one column corresponding to the sample ids and one column containing the metadata of interest that will be focused on.}
 
 \item{focal_var_level}{length-one character vector specifying the variable value to restrict inferences of prevalence to. In other words, prevalence will be computed based on the sample set that contain this value of the variable of interest in the metadata table.}
 
