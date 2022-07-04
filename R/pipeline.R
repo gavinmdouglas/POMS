@@ -441,8 +441,10 @@ check_POMS_pipeline_args <- function(abun,
   }
 
   if ((class(ncores) != "integer") && (class(ncores) != "numeric")) { stop("Stopping - ncores argument needs to be of class numeric or integer.") }
-  if (ncores <= 0) { stop("Stopping - ncores argument needs to be higher than 0.") }
+  if (length(ncores) != 1) { stop("Stopping - ncores argument must be of length 1.") }
+  if (ncores <= 0) { stop("Stopping - ncores argument must be 1 or higher.") }
 
+  
   if ((class(pseudocount) != "integer") && (class(pseudocount) != "numeric")) { stop("Stopping - pseudocount argument needs to be of class numeric or integer.") }
   if (pseudocount < 0) { stop("Stopping - pseudocount argument cannot be lower than 0.") }
 
