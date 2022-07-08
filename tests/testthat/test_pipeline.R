@@ -37,7 +37,8 @@ test_that("two-group pipeline produces expected basic output with example files"
                                     ncores = 1,
                                     min_num_tips = 4,
                                     multinomial_min_FSNs = 3,
-                                    min_func_instances = 0)
+                                    min_func_instances = 0,
+                                   derep_nodes = FALSE)
 
   expect_equal(ex_basic_output$results, expected_df)
 })
@@ -55,7 +56,8 @@ test_that("two-group pipeline produces expected basic output with example files 
                                    ncores = 1,
                                    min_num_tips = 4,
                                    multinomial_min_FSNs = 3,
-                                   min_func_instances = 0)
+                                   min_func_instances = 0,
+                                   derep_nodes = FALSE)
   
   expect_equal(ex_basic_output$results, expected_df)
 })
@@ -75,7 +77,8 @@ test_that("two-group pipeline produces expected basic output with example files 
                                    ncores = 1,
                                    min_num_tips = 4,
                                    multinomial_min_FSNs = 3,
-                                   min_func_instances = 0)
+                                   min_func_instances = 0,
+                                   derep_nodes = FALSE)
   
   expect_equal(ex_basic_output$results, expected_df)
 })
@@ -93,7 +96,8 @@ test_that("correct error occurs when significant nodes are not subset of tested 
                                       multinomial_min_FSNs = 3,
                                       min_func_instances = 0,
                                       manual_BSNs = c("test1", "test2"),
-                                      manual_balances = list("a"=as.numeric(), "b"=as.numeric(), "c"=as.numeric())),
+                                      manual_balances = list("a"=as.numeric(), "b"=as.numeric(), "c"=as.numeric()),
+                                      derep_nodes = FALSE),
                regexp = "not all nodes in manual_BSNs vector are present in manual_balances object")
 })
 
@@ -119,7 +123,8 @@ test_that("correct error occurs when some node labels in balances input are not 
                                       multinomial_min_FSNs = 3,
                                       min_func_instances = 0,
                                       manual_BSNs = c("test", "n2"),
-                                      manual_balances = ex_balances_prepped$balances),
+                                      manual_balances = ex_balances_prepped$balances,
+                                      derep_nodes = FALSE),
                                       regexp = "Stopping - some balance labels \\(in manually input manual_balances argument\\) are missing from tree node labels.")
 })
 
@@ -137,7 +142,8 @@ test_that("correct error occurs when input tree is missing node labels when manu
                                       multinomial_min_FSNs = 3,
                                       min_func_instances = 0,
                                       manual_BSNs = c("a", "b"),
-                                      manual_balances = list("a"=as.numeric(), "b"=as.numeric(), "c"=as.numeric())),
+                                      manual_balances = list("a"=as.numeric(), "b"=as.numeric(), "c"=as.numeric()),
+                                      derep_nodes = FALSE),
                                       regexp = "Stopping - node labels must be present in tree if manual balances \\(i.e., manual_balances argument\\) are specificed.")
 })
 
@@ -152,7 +158,8 @@ test_that("prep_func_node_info works as expected with pipeline output", {
                                    ncores = 1,
                                    min_num_tips = 4,
                                    multinomial_min_FSNs = 3,
-                                   min_func_instances = 0)
+                                   min_func_instances = 0,
+                                   derep_nodes = FALSE)
   
   K07106_node_info <- prep_func_node_info(POMS_output = ex_basic_output,
                                           func_id = "K07106",

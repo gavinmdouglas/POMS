@@ -151,6 +151,12 @@ abun_isometric_log_ratios <- function(abun_table, set1_features, set2_features, 
 #'
 #' @param pseudocount Optional constant to add to all abundance values, to ensure that there are only non-zero values. For read count data this would typically be 1.
 #'
+#' @param derep_nodes Boolean setting to specify whether nodes should be dereplicated based on the Jaccard similarity of the underlying tips.
+#' When TRUE, nodes with pairwise Jaccard similarity >= jaccard_cutoff will be collapsed into the same cluster. A node will be added to a cluster if it is adequately similar to any nodes in a cluster.
+#' One representative per cluster will be retained, which will correspond to the node with the fewest underlying tips. Note that this step is performed after the step involving the min_num_tips screening.
+#'
+#' @param jaccard_cutoff Numeric vector of length 1. Must be between 0 and 1 (inclusive). Corresponds to the Jaccard cut-off used for clustering nodes based on similar sets of underlying tips.
+#'
 #' @param subset_to_test Optional vector of node labels (*not indices*) that correspond to the subset of nodes that should be considered.
 #' Note that balances will still only be computed at each of these nodes if they have a sufficient number of underlying tips (as specified by the "min_num_tips" argument).
 #' If this argument is not specified then all nodes will be considered.
@@ -164,8 +170,25 @@ abun_isometric_log_ratios <- function(abun_table, set1_features, set2_features, 
 #'  
 #' "negligible_nodes": character vector of node labels considered negligible. This is defined as those with fewer tips on either side of the node than specified by the "min_num_tips" argument.
 #' 
+#' 
+#' When derep_nodes = TRUE, additional elements will also be returned:
+#' 
+#' "ignored_redundant_nodes": character vector of (non-negligible) node labels ignored due to being in sharing high Jaccard similarity with at least one other node.
+#' 
+#' "node_pairwise_jaccard": dataframe of pairwise Jaccard similarity for all non-negligible nodes.
+#' 
+#' "node_clusters": list with the node labels clustered into each unique cluster of nodes based on Jaccard similarities.
+#' Each list element is a separate cluster for which only one node was selected as a representative (whichever one had the fewest underlying tips).
+#' 
 #' @export
-compute_node_balances <- function(tree, abun_table, min_num_tips=10, ncores=1, pseudocount=NULL, subset_to_test=NULL) {
+compute_node_balances <- function(tree,
+                                  abun_table,
+                                  min_num_tips = 10,
+                                  ncores = 1,
+                                  pseudocount = NULL,
+                                  derep_nodes = FALSE,
+                                  jaccard_cutoff = 0.75,
+                                  subset_to_test = NULL) {
   
   if (is.null(tree$node.label)) {
     stop("Stopping - input tree does not have any node labels.") 
@@ -188,12 +211,13 @@ compute_node_balances <- function(tree, abun_table, min_num_tips=10, ncores=1, p
   # Get tips on either side of each node.
   node_features <- parallel::mclapply(nodes_to_test,
                                       lhs_rhs_tips,
-                                      tree=tree,
-                                      get_node_index=TRUE,
-                                      mc.cores=ncores)
+                                      tree = tree,
+                                      get_node_index = TRUE,
+                                      mc.cores = ncores)
   
   names(node_features) <- nodes_to_test
   
+  # Identify negligible nodes based on having insufficient underlying tips.
   negligible_nodes <- sapply(names(node_features),
                              function(x) {
                                lhs_feat_num <- length(node_features[[x]]$lhs)
@@ -212,30 +236,51 @@ compute_node_balances <- function(tree, abun_table, min_num_tips=10, ncores=1, p
     negligible_nodes <- as.character()
   }
   
-  nonnegligible_nodes_i <- which(! names(node_features) %in% negligible_nodes)
+  nodes_to_consider <- names(node_features)[which(! names(node_features) %in% negligible_nodes)]
   
-  if (length(nonnegligible_nodes_i) > 0) {
-    nonnegligible_nodes <- names(node_features)[nonnegligible_nodes_i]
-    
-    # Calculate balances at each node.
-    balance_calc <- parallel::mclapply(nonnegligible_nodes,
+  if (length(nodes_to_consider) == 0) {
+    stop("Stopping - no non-negligible nodes remain after filtering based on mininum number of tips on left and right-hand side of each node.")
+  }
+  
+  if (derep_nodes) {
+    jaccard_derep_out <- jaccard_derep_nodes(tree = tree,
+                                             node_features = node_features[nodes_to_consider],
+                                             cutoff = jaccard_cutoff,
+                                             ncores = ncores)
+
+    nodes_to_consider <- nodes_to_consider[which(! nodes_to_consider %in% jaccard_derep_out$ignored_redundant_nodes)]
+      
+  }
+  
+  
+  
+  # Calculate balances at each node.
+  balance_calc <- parallel::mclapply(nodes_to_consider,
                                        function(x) {
-                                         return(abun_isometric_log_ratios(abun_table=abun_table,
-                                                                          set1_features=node_features[[x]]$lhs,
-                                                                          set2_features=node_features[[x]]$rhs,
-                                                                          pseudocount=pseudocount))
+                                         return(abun_isometric_log_ratios(abun_table = abun_table,
+                                                                          set1_features = node_features[[x]]$lhs,
+                                                                          set2_features = node_features[[x]]$rhs,
+                                                                          pseudocount = pseudocount))
                                        },
                                        mc.cores=ncores)
     
-    names(balance_calc) <- nonnegligible_nodes
+  names(balance_calc) <- nodes_to_consider
+  
+  if (derep_nodes) {
+    
+    return(list(tips_underlying_nodes = node_features,
+                balances = balance_calc,
+                negligible_nodes = negligible_nodes,
+                ignored_redundant_nodes = jaccard_derep_out$ignored_redundant_nodes,
+                node_pairwise_jaccard = jaccard_derep_out$node_jaccard,
+                node_clusters = jaccard_derep_out$node_clusters))
     
   } else {
-    stop("Stopping - no non-negligible nodes remain after filtering based on mininum number of tips of left and right-hand side of each node.")
-  }
   
-  return(list(tips_underlying_nodes=node_features,
-              balances=balance_calc,
-              negligible_nodes=negligible_nodes))
+    return(list(tips_underlying_nodes = node_features,
+                balances = balance_calc,
+                negligible_nodes = negligible_nodes))
+  }
   
 }
 
@@ -288,3 +333,99 @@ lhs_rhs_tips <- function(tree, node, get_node_index=FALSE) {
               node_i=node))
 }
 
+
+# Identify clusters of nodes based on how similar their underlying tips are.
+# Keep a single node per cluster, which will correspond to the node with the smallest number of underlying tips.
+jaccard_derep_nodes <- function(tree, node_features, cutoff = 0.75, ncores = 1) {
+  
+  if (length(cutoff) != 1) {
+    stop("Jaccard cut-off argument must be of length one.")
+  } else if (class(cutoff) != "integer" & class(cutoff) != "numeric") {
+    stop("Jaccard cut-off argument must be a number.")
+  } else if (cutoff < 0 | cutoff > 1) {
+    stop("Jaccard cut-off must be between 0 and 1 (inclusively).")
+  }
+  
+  node_features_underlying <- parallel::mclapply(node_features, function(x) { c(x$lhs, x$rhs) },
+                                                 mc.cores = ncores)
+  
+  node_combos_i <- utils::combn(length(node_features_underlying), 2, simplify = FALSE)
+  
+  node_jaccard <- unlist(parallel::mclapply(node_combos_i,
+                                            function(x) {
+                                              length(intersect(node_features_underlying[[x[1]]], node_features_underlying[[x[2]]])) / 
+                                                length(union(node_features_underlying[[x[1]]], node_features_underlying[[x[2]]]))
+                                            },
+                                            mc.cores = ncores))
+  
+  node_jaccard <- data.frame(cbind(t(utils::combn(length(node_features_underlying), 2)), node_jaccard))
+  
+  colnames(node_jaccard) <- c("NodeA", "NodeB", "Jaccard_Sim")
+  node_jaccard$NodeA <- names(node_features_underlying)[node_jaccard$NodeA]
+  node_jaccard$NodeB <- names(node_features_underlying)[node_jaccard$NodeB]
+  
+  node_jaccard_outliers <- node_jaccard[which(node_jaccard$Jaccard_Sim >= cutoff), ]
+  
+  if (nrow(node_jaccard_outliers) == 0) {
+    
+    # No redundant nodes identified.
+    return(list(node_jaccard = node_jaccard,
+                ignored_redundant_nodes = as.character(),
+                node_clusters = list()))
+
+  }
+  
+  node_clusters <- list()
+  
+  unique_nodeA <- unique(node_jaccard_outliers$NodeA)
+  
+  cluster_num <- 1
+  
+  for (node_label in unique_nodeA) {
+    
+    matching_A <- which(node_jaccard_outliers$NodeA == node_label)
+    
+    if (length(matching_A) == 0) { next }  
+    
+    node_clusters[[cluster_num]] <- c(node_label, node_jaccard_outliers[matching_A, "NodeB"])
+    node_jaccard_outliers <- node_jaccard_outliers[-matching_A, ]
+    
+    matching_A <- which(node_jaccard_outliers$NodeA %in% node_clusters[[cluster_num]])
+    matching_B <- which(node_jaccard_outliers$NodeB %in% node_clusters[[cluster_num]])
+    all_match_indices <- c(matching_A, matching_B)
+    
+    while(length(all_match_indices) > 0) {
+      
+      node_clusters[[cluster_num]] <- unique(c(node_clusters[[cluster_num]],
+                                               node_jaccard_outliers[matching_A, "NodeB"],
+                                               node_jaccard_outliers[matching_B, "NodeA"]))
+      
+      node_jaccard_outliers <- node_jaccard_outliers[-all_match_indices, ]
+      
+      matching_A <- which(node_jaccard_outliers$NodeA %in% node_clusters[[cluster_num]])
+      matching_B <- which(node_jaccard_outliers$NodeB %in% node_clusters[[cluster_num]])
+      all_match_indices <- c(matching_A, matching_B)
+      
+    }
+    
+    cluster_num <- cluster_num + 1
+  }
+  
+  ignored_redundant_nodes <- as.character()
+  
+  for (cluster_i in 1:length(node_clusters)) {
+    
+    num_underlying_tips <- sapply(node_features_underlying[node_clusters[[cluster_i]]], length)
+    
+    smallest_node_i <- which.min(num_underlying_tips)
+    smallest_node <- names(num_underlying_tips)[smallest_node_i]
+    
+    ignored_redundant_nodes <- c(ignored_redundant_nodes, node_clusters[[cluster_i]][-smallest_node_i])
+    
+  }
+
+  return(list(node_jaccard = node_jaccard,
+              ignored_redundant_nodes = ignored_redundant_nodes,
+              node_clusters = node_clusters))
+
+}

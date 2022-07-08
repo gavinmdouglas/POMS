@@ -102,6 +102,18 @@ sim_presence_absence <- function(effect.size = 2,
   pT <- sapply(1:taxa, function(.) {
     rbeta(1, baseline.distro[1], baseline.distro[2])
   })
+  
+  # Added to account for cases where the simulated value is 1, which
+  # is undefined when transformed to pTb.
+  if (length(which(pT == 1)) > 0) {
+    pT[which(pT == 1)] <- 0.9999999
+  }
+  
+  # Same but for any values of 0.
+  if (length(which(pT == 0)) > 0) {
+    pT[which(pT == 0)] <- 0.0000001
+  }
+  
   fx <- c(((2 * rbinom(n = tp.taxa, size = 1, sign.pos.prob)) - 1),
           rep(0, neg.taxa))
   pTbs <- sapply(1:taxa, function(i) {
@@ -190,7 +202,7 @@ optimize_b_wrapper <- function(real_abun_table,
                                effect.size = 2,
                                prior,
                                tol,
-                               bounds = c(0.001, 5),
+                               bounds = c(0.01, 5),
                                add.pc = TRUE,
                                a = 0.05,
                                pos.prop = 0.5) {
@@ -390,7 +402,7 @@ specificity_scores <- function(abun_table,
                                 effect.size = 2,
                                 prior = prior,
                                 tol = tolerance,
-                                bounds = c(0.001, 5),
+                                bounds = c(0.01, 5),
                                 a = 0.05,
                                 pos.prop = 0.5,
                                 add.pc = TRUE)$maximum

@@ -68,7 +68,7 @@ test_that("specificity_scores returns expected values.", {
   names(expected) <- c("ERR321543_bin.17", "ERR1305897_bin.4",
                        "ERR414271_bin.13", "ERR688539_bin.27",
                        "ERR1913101_bin.17")
-  expect_equal(observed$ess, expected, tolerance = 1e-7)
+  expect_equal(observed$ess, expected, tolerance = 1e-2)
   
 })
 

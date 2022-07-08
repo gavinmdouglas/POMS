@@ -19,6 +19,8 @@ POMS_pipeline(
   min_func_instances = 10,
   min_func_prop = 0.001,
   multinomial_min_FSNs = 5,
+  derep_nodes = FALSE,
+  jaccard_cutoff = 0.75,
   BSN_p_cutoff = 0.05,
   BSN_correction = "none",
   FSN_p_cutoff = 0.05,
@@ -77,6 +79,12 @@ This argument is ignored if significant nodes are specified manually.}
 
 \item{multinomial_min_FSNs}{The minimum number of FSNs required to run a multinomial test for a given function.}
 
+\item{derep_nodes}{boolean value specifying whether nodes should be dereplicated based on similar sets of underlying tips (EXPERIMENTAL setting).
+More specifically, whether nodes should be clustered based on how similar their underlying tips are (given a Jaccard index cut-off, specified as separately),
+and then only retaining the node with the fewest underlying tips per cluster.}
+
+\item{jaccard_cutoff}{Numeric vector of length 1. Must be between 0 and 1 (inclusive). Corresponds to the Jaccard cut-off used for clustering nodes based on similar sets of underlying tips (when derep_nodes = TRUE).}
+
 \item{BSN_p_cutoff}{significance cut-off for identifying BSNs.}
 
 \item{BSN_correction}{multiple-test correction to use on Wilcoxon test p-values when identifying BSNs.
@@ -111,7 +119,7 @@ list containing (at minimum) these elements:
 \item results: dataframe with each tested function as a row and the numbers of FSNs of each type as columns, as well as the multinomial test output.
 \item balance_info: list containing the tips underlying each node, which were what the balances are based on, the balances themselves at each tested node,
 and the set of nodes that were determined to be negligible due to having too few underlying tips. Note that the balances and underlying tips are provided for
-all non-negligible (i.e., tested) nodes, not just those identified as BSNs.
+all non-negligible (i.e., tested) nodes, not just those identified as BSNs. Additional information on the dereplication and Jaccard similarity of nodes is returned as well when derep_nodes = TRUE.
 \item BSNs: character vector with BSNs as names and values of "group1" and "group2" to indicate for which sample group (or other binary division) the sample balances were higher.
 \item FSNs_summary: list containing each tested function as a separate element. The labels for nodes in each FSN category of the multinomial test are listed per function (or are empty if there were no such FSNs).
 \item tree: the prepped tree used by the pipeline, including the added node labels if a tree lacking labels was provided. This tree will also have been subset to only those tips found in the

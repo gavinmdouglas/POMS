@@ -10,6 +10,8 @@ compute_node_balances(
   min_num_tips = 10,
   ncores = 1,
   pseudocount = NULL,
+  derep_nodes = FALSE,
+  jaccard_cutoff = 0.75,
   subset_to_test = NULL
 )
 }
@@ -26,6 +28,12 @@ No 0's are permitted unless the "pseudocount" option is set.}
 
 \item{pseudocount}{Optional constant to add to all abundance values, to ensure that there are only non-zero values. For read count data this would typically be 1.}
 
+\item{derep_nodes}{Boolean setting to specify whether nodes should be dereplicated based on the Jaccard similarity of the underlying tips.
+When TRUE, nodes with pairwise Jaccard similarity >= jaccard_cutoff will be collapsed into the same cluster. A node will be added to a cluster if it is adequately similar to any nodes in a cluster.
+One representative per cluster will be retained, which will correspond to the node with the fewest underlying tips. Note that this step is performed after the step involving the min_num_tips screening.}
+
+\item{jaccard_cutoff}{Numeric vector of length 1. Must be between 0 and 1 (inclusive). Corresponds to the Jaccard cut-off used for clustering nodes based on similar sets of underlying tips.}
+
 \item{subset_to_test}{Optional vector of node labels (\emph{not indices}) that correspond to the subset of nodes that should be considered.
 Note that balances will still only be computed at each of these nodes if they have a sufficient number of underlying tips (as specified by the "min_num_tips" argument).
 If this argument is not specified then all nodes will be considered.}
@@ -39,6 +47,15 @@ Note that which side of the node is denoted as the left-hand or right-hand side 
 "balances": list with each non-negligible node as a separate element. The sample balances for each node are provided as a numeric vector within each of these elements.
 
 "negligible_nodes": character vector of node labels considered negligible. This is defined as those with fewer tips on either side of the node than specified by the "min_num_tips" argument.
+
+When derep_nodes = TRUE, additional elements will also be returned:
+
+"ignored_redundant_nodes": character vector of (non-negligible) node labels ignored due to being in sharing high Jaccard similarity with at least one other node.
+
+"node_pairwise_jaccard": dataframe of pairwise Jaccard similarity for all non-negligible nodes.
+
+"node_clusters": list with the node labels clustered into each unique cluster of nodes based on Jaccard similarities.
+Each list element is a separate cluster for which only one node was selected as a representative (whichever one had the fewest underlying tips).
 }
 \description{
 Computes balances (i.e., isometric log ratios, for each sample separately) of feature abundances at each non-negligible node in the tree.

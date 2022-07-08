@@ -63,7 +63,13 @@
 #' @param min_func_prop minimum proportion of tips that must encode the function for it to be retained for the analysis.
 #' 
 #' @param multinomial_min_FSNs The minimum number of FSNs required to run a multinomial test for a given function.
-
+#' 
+#' @param derep_nodes boolean value specifying whether nodes should be dereplicated based on similar sets of underlying tips (EXPERIMENTAL setting).
+#' More specifically, whether nodes should be clustered based on how similar their underlying tips are (given a Jaccard index cut-off, specified as separately),
+#' and then only retaining the node with the fewest underlying tips per cluster.
+#' 
+#' @param jaccard_cutoff Numeric vector of length 1. Must be between 0 and 1 (inclusive). Corresponds to the Jaccard cut-off used for clustering nodes based on similar sets of underlying tips (when derep_nodes = TRUE).
+#' 
 #' @param BSN_p_cutoff significance cut-off for identifying BSNs.
 #' 
 #' @param BSN_correction multiple-test correction to use on Wilcoxon test p-values when identifying BSNs.
@@ -95,7 +101,7 @@
 #' 
 #' - balance_info: list containing the tips underlying each node, which were what the balances are based on, the balances themselves at each tested node,
 #' and the set of nodes that were determined to be negligible due to having too few underlying tips. Note that the balances and underlying tips are provided for
-#' all non-negligible (i.e., tested) nodes, not just those identified as BSNs.
+#' all non-negligible (i.e., tested) nodes, not just those identified as BSNs. Additional information on the dereplication and Jaccard similarity of nodes is returned as well when derep_nodes = TRUE.
 #' 
 #' - BSNs: character vector with BSNs as names and values of "group1" and "group2" to indicate for which sample group (or other binary division) the sample balances were higher.
 #' 
@@ -121,6 +127,8 @@ POMS_pipeline <- function(abun,
                           min_func_instances = 10,
                           min_func_prop = 0.001,
                           multinomial_min_FSNs = 5,
+                          derep_nodes = FALSE,
+                          jaccard_cutoff = 0.75,
                           BSN_p_cutoff = 0.05,
                           BSN_correction = "none",
                           FSN_p_cutoff = 0.05,
@@ -145,6 +153,8 @@ POMS_pipeline <- function(abun,
                                           min_func_instances = min_func_instances,
                                           min_func_prop = min_func_prop,
                                           multinomial_min_FSNs = multinomial_min_FSNs,
+                                          derep_nodes = derep_nodes,
+                                          jaccard_cutoff = jaccard_cutoff,
                                           BSN_p_cutoff = BSN_p_cutoff,
                                           BSN_correction = BSN_correction,
                                           FSN_p_cutoff = FSN_p_cutoff,
@@ -180,15 +190,21 @@ POMS_pipeline <- function(abun,
                                                  tree = tree,
                                                  ncores = ncores,
                                                  min_num_tips = min_num_tips,
-                                                 pseudocount = pseudocount)
+                                                 pseudocount = pseudocount,
+                                                 derep_nodes = derep_nodes,
+                                                 jaccard_cutoff = jaccard_cutoff)
     
     if (length(calculated_balances$balances) == 0) {
       stop("Stopping - cannot run POMS workflow because all nodes have fewer underlying tips than specified by the min_num_tips argument.")
     }
     
-    if(verbose) { message("Identified ", length(calculated_balances$balances), " of ", length(tree$node.label), " nodes as non-negligible, which will be used for subsequent analyses.") }
+    if (verbose & derep_nodes) {
+      message("Identified ", length(calculated_balances$balances), " of ", length(tree$node.label), " nodes as non-negligible and non-redundant.")
+    } else if (verbose & ! derep_nodes) {
+      message("Identified ", length(calculated_balances$balances), " of ", length(tree$node.label), " nodes as non-negligible. Note that no check for redundancy in underlying tips across nodes was performed (see derep_nodes option).")
+    }
     
-    if(verbose) { message("Running Wilcoxon tests to test for differences in balances between groups at each non-negligible node.") }
+    if (verbose) { message("Running Wilcoxon tests to test for differences in balances between groups at each retained node.") }
     
     pairwise_node_out <- pairwise_mean_direction_and_wilcoxon(in_list = calculated_balances$balances,
                                                               group1 = group1_samples,
@@ -198,7 +214,7 @@ POMS_pipeline <- function(abun,
     
     BSNs <- names(calculated_balances$balances)[which(pairwise_node_out$wilcox_corrected_p < BSN_p_cutoff)]
     
-    if(verbose) { message("Identified ", length(BSNs), " BSNs out of the ", length(calculated_balances$balances), " non-negligible nodes.") }
+    if(verbose) { message("Identified ", length(BSNs), " BSNs out of the ", length(calculated_balances$balances), " retained nodes.") }
 
   } else {
     
@@ -235,7 +251,7 @@ POMS_pipeline <- function(abun,
 
   }
   
-  if (verbose) { message("Identifying enriched functions at all non-negligible nodes.") }
+  if (verbose) { message("Identifying enriched functions at all retained nodes.") }
   
   all_node_enriched_funcs <- parallel::mclapply(names(calculated_balances$balances),
                                           function(x) {
@@ -313,7 +329,7 @@ POMS_pipeline <- function(abun,
       if ((length(BSNs) > 0) && (summary_df[func_id, "num_FSNs"] >= multinomial_min_FSNs) && (prop_tested_BSNs != 1)) {
         summary_df[func_id, "multinomial_p"] <- XNomial::xmulti(obs = observed_counts,
                                                                 expr = multinomial_exp_prop,
-                                                                detail = 0)$pProb 
+                                                                detail = 0)$pLLR 
       }
     }
 
@@ -367,6 +383,8 @@ check_POMS_pipeline_args <- function(abun,
                                      min_func_instances,
                                      min_func_prop,
                                      multinomial_min_FSNs,
+                                     derep_nodes,
+                                     jaccard_cutoff,
                                      BSN_p_cutoff,
                                      BSN_correction,
                                      FSN_p_cutoff,
@@ -444,6 +462,15 @@ check_POMS_pipeline_args <- function(abun,
   if (length(ncores) != 1) { stop("Stopping - ncores argument must be of length 1.") }
   if (ncores <= 0) { stop("Stopping - ncores argument must be 1 or higher.") }
 
+  if (! is.logical(derep_nodes)) { stop("Stopping - derep_nodes argument needs to be TRUE or FALSE.") }
+  
+  if (length(jaccard_cutoff) != 1) {
+    stop("Stopping - jaccard_cutoff argument must be of length one.")
+  } else if (class(jaccard_cutoff) != "integer" & class(jaccard_cutoff) != "numeric") {
+    stop("Stopping - jaccard_cutoff argument must be a number.")
+  } else if (jaccard_cutoff < 0 | jaccard_cutoff > 1) {
+    stop("Stopping - jaccard_cutoff must be between 0 and 1 (inclusively).")
+  }
   
   if ((class(pseudocount) != "integer") && (class(pseudocount) != "numeric")) { stop("Stopping - pseudocount argument needs to be of class numeric or integer.") }
   if (pseudocount < 0) { stop("Stopping - pseudocount argument cannot be lower than 0.") }

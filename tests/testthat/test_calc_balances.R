@@ -138,7 +138,7 @@ test_that("compute_node_balances try subset_to_test with nodes present and no no
                                               ncores=1,
                                               pseudocount=1,
                                               subset_to_test = c("n3", "n8", "n13")),
-               regexp = "Stopping - no non-negligible nodes remain after filtering based on mininum number of tips of left and right-hand side of each node.")
+               regexp = "Stopping - no non-negligible nodes remain after filtering based on mininum number of tips on left and right-hand side of each node.")
   
 })
 
@@ -157,3 +157,33 @@ test_that("compute_node_balances try altering pseudocount to make sure that para
   
 })
 
+
+
+test_that("compute_node_balances will dereplicate nodes correctly, cutoff = 0.75.", {
+  
+  balances_out <- compute_node_balances(tree = ex_tree,
+                                        abun_table = ex_taxa_abun,
+                                        min_num_tips=5,
+                                        ncores=1,
+                                        pseudocount=1,
+                                        derep_nodes = TRUE,
+                                        jaccard_cutoff = 0.75)
+  
+  expect_equal(balances_out$ignored_redundant_nodes, "n20")
+  
+})
+
+
+test_that("compute_node_balances will dereplicate nodes correctly, cutoff = 0.5.", {
+  
+  balances_out <- compute_node_balances(tree = ex_tree,
+                                        abun_table = ex_taxa_abun,
+                                        min_num_tips=5,
+                                        ncores=1,
+                                        pseudocount=1,
+                                        derep_nodes = TRUE,
+                                        jaccard_cutoff = 0.5)
+  
+  expect_equal(balances_out$node_clusters[[1]], c("n1", "n18", "n20", "n25", "n32"))
+  
+})
