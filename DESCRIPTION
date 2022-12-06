@@ -6,19 +6,28 @@ Authors@R:
            family = "Douglas",
            role = c("aut", "cre"),
            email = "gavinmdouglas@gmail.com")
-Description: Code to identify functional enrichments across diverse taxa in phylogenetic tree, particularly where these taxa differ in abundance across samples in a non-random pattern. The motivation for this approach is to identify microbial functions encoded by diverse taxa that are at higher abundance in certain samples compared to others, which could indicate that such functions are broadly adaptive under certain conditions. See GitHub repository for tutorial and examples: https://github.com/gavinmdouglas/POMS/wiki.
+Description: Code to identify functional enrichments across diverse taxa
+    in phylogenetic tree, particularly where these taxa differ in
+    abundance across samples in a non-random pattern. The motivation for
+    this approach is to identify microbial functions encoded by diverse
+    taxa that are at higher abundance in certain samples compared to
+    others, which could indicate that such functions are broadly adaptive
+    under certain conditions. See GitHub repository for tutorial and
+    examples: https://github.com/gavinmdouglas/POMS/wiki.
 License: `use_gpl3_license()`
-Encoding: UTF-8
-LazyData: true
-Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.2.0
 Imports:
     ape (>= 3.0),
+    data.table,
+    MASS,
     parallel (>= 3.3.0),
     phangorn (>= 2.0.0),
     phylolm (>= 2.6),
-    stringr (>= 1.0.0),
+    utils,
     XNomial (>= 1.0.4)
 Suggests:
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
+Encoding: UTF-8
+LazyData: true
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.2.0
