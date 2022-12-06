@@ -13,8 +13,8 @@ Description: Code to identify functional enrichments across diverse taxa
     taxa that are at higher abundance in certain samples compared to
     others, which could indicate that such functions are broadly adaptive
     under certain conditions. See GitHub repository for tutorial and
-    examples: https://github.com/gavinmdouglas/POMS/wiki.
-License: `use_gpl3_license()`
+    examples: <https://github.com/gavinmdouglas/POMS/wiki>.
+License: GPL-3
 Imports:
     ape (>= 3.0),
     data.table,
