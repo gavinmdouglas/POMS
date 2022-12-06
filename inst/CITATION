@@ -1,0 +1,16 @@
+citHeader("To cite POMS in publications use:")
+
+citEntry(
+  entry    = "Article",
+  title    = "Integrating phylogenetic and functional data in microbiome studies",
+  author   = "Gavin M. Douglas, Molly G. Hayes, Morgan G. I. Langille, Elhanan Borenstein",
+  journal  = "Bioinformatics",
+  year     = "2022",
+  volume   = "38",
+  number   = "22",
+  pages    = "5055-5063",
+  url      = "https://doi.org/10.1093/bioinformatics/btac655",
+  textVersion = paste(
+    "Gavin M. Douglas, Molly G. Hayes, Morgan G. I. Langille, Elhanan Borenstein. 2022. Integrating phylogenetic and functional data in microbiome studies. Bioinformatics 38 (22): 5055-5063. DOI: 10.1093/bioinformatics/btac655."
+  )
+)
