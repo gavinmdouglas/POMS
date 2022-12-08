@@ -170,18 +170,13 @@ score.regularization <- function(mtx,
   return(c(fpr = fpr, pwr.hi = pwr.hi, pwr.lo = pwr.lo))
 }
 
-#' Get a distribution of environment prevalences from a matrix.
-#' This function was taken unchanged from the phylogenize R codebase.
-#' 
-#' This is used to optimize the value of the free parameter $b$ in
-#' \code{regularize.pET}.
-#'
-#' @param mtx A matrix of presence/absence values.
-#' @param ids A named factor assigning samples (matrix columns) to environments.
-#' @param fallback A two-element numeric vector, giving the beta parameters to
-#'     use if fitting fails.
-#' @return A best-fit of prevalences to a beta distribution.
-#' @keywords internal
+# Get a distribution of environment prevalences from a matrix.
+# This function was taken unchanged from the phylogenize R codebase.
+# This is used to optimize the value of the free parameter $b$ in regularize.pET.
+# mtx A matrix of presence/absence values.
+# ids A named factor assigning samples (matrix columns) to environments.
+# fallback A two-element numeric vector, giving the beta parameters to use if fitting fails.
+# A best-fit of prevalences to a beta distribution.
 fit.beta.list <-  function(mtx, ids, fallback = c(NA, NA)) {
   lapply(unique(ids), function(i) {
     tryCatch(
