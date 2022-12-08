@@ -34,14 +34,14 @@ feature_sets_func_fisher <- function(in_func, feature_set1, feature_set2, add_ps
       func_count_matrix <- func_count_matrix + 1
     }
     
-    func_count_fisher <- fisher.test(func_count_matrix)
+    func_count_fisher <- stats::fisher.test(func_count_matrix)
     
     fisher_out[func, ] <- c(func_count_matrix[1, 1], func_count_matrix[2, 1],
                             func_count_matrix[1, 2], func_count_matrix[2, 2],
                             func_count_fisher$estimate, func_count_fisher$p.value)
   }
   
-  fisher_out$P_corr <- p.adjust(fisher_out$P, multiple_test_corr)
+  fisher_out$P_corr <- stats::p.adjust(fisher_out$P, multiple_test_corr)
   
   return(fisher_out)
 }

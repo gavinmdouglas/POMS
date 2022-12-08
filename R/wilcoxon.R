@@ -36,7 +36,7 @@ pairwise_mean_direction_and_wilcoxon <- function(in_list, group1, group2, corr_m
     
   } else {
     result <- parallel::mclapply(names(in_list), function(x) {
-                    wilcox_out <- wilcox.test(in_list[[x]][group1], in_list[[x]][group2], exact=FALSE)
+                    wilcox_out <- stats::wilcox.test(in_list[[x]][group1], in_list[[x]][group2], exact=FALSE)
                     
                     group1_mean <- mean(in_list[[x]][group1])
                     group2_mean <- mean(in_list[[x]][group2])
@@ -61,7 +61,7 @@ pairwise_mean_direction_and_wilcoxon <- function(in_list, group1, group2, corr_m
       mean_direction <- c(mean_direction, result[[i]]$mean_direction)
     }
     
-    wilcox_corrected_p <- p.adjust(p = wilcox_raw_p, method = corr_method)
+    wilcox_corrected_p <- stats::p.adjust(p = wilcox_raw_p, method = corr_method)
     
     names(wilcox_raw_p) <- names(in_list)
     names(wilcox_corrected_p) <- names(in_list)

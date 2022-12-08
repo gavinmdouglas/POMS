@@ -186,7 +186,7 @@ POMS_pipeline <- function(abun,
        stop("Stopping - specified pseudocount is larger than the smallest non-zero abundance value in the taxa abundance table. Please re-run with a lower pseudocount value.")
     }
     
-    calculated_balances <- compute_node_balances(abun = abun,
+    calculated_balances <- compute_node_balances(abun_table = abun,
                                                  tree = tree,
                                                  ncores = ncores,
                                                  min_num_tips = min_num_tips,
@@ -334,13 +334,13 @@ POMS_pipeline <- function(abun,
     }
 
     if (multinomial_correction != "none") {
-      summary_df$multinomial_corr <- p.adjust(summary_df$multinomial_p, multinomial_correction)
+      summary_df$multinomial_corr <- stats::p.adjust(summary_df$multinomial_p, multinomial_correction)
     }
   
     if (! is.null(func_descrip_infile)) {
       if (verbose) { message("Adding function descriptions to output.") }
-      func_descrip <- read.table(func_descrip_infile, header = FALSE, sep = "\t",
-                                 row.names = 1, stringsAsFactors = FALSE, quote = "")
+      func_descrip <- utils::read.table(func_descrip_infile, header = FALSE, sep = "\t",
+                                        row.names = 1, stringsAsFactors = FALSE, quote = "")
       summary_df$description <- func_descrip[rownames(summary_df), "V2"]
   
   } else if (verbose) {
@@ -486,9 +486,9 @@ check_POMS_pipeline_args <- function(abun,
   
   if ((min_func_instances < 0) || (min_func_instances > ncol(func))) { stop("Stopping - the min_func_instances argument must be between 0 and the total number of functions.") }
 
-  if (! FSN_correction %in% p.adjust.methods) { stop("Stopping - FSN_correction argument needs to be found in p.adjust.methods.") }
-  if (! BSN_correction %in% p.adjust.methods) { stop("Stopping - BSN_correction argument needs to be found in p.adjust.methods.") }
-  if (! multinomial_correction %in% p.adjust.methods) { stop("Stopping - multinomial_correction argument needs to be found in p.adjust.methods.") }
+  if (! FSN_correction %in% stats::p.adjust.methods) { stop("Stopping - FSN_correction argument needs to be found in p.adjust.methods.") }
+  if (! BSN_correction %in% stats::p.adjust.methods) { stop("Stopping - BSN_correction argument needs to be found in p.adjust.methods.") }
+  if (! multinomial_correction %in% stats::p.adjust.methods) { stop("Stopping - multinomial_correction argument needs to be found in p.adjust.methods.") }
   
   if (! is.null(func_descrip_infile) && (! file.exists(func_descrip_infile))) { stop("Stopping - func_descrip_infile is non-NULL, but the specified file was not found.") }
 

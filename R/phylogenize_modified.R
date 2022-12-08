@@ -1,17 +1,17 @@
-#' Calculate logit of a value or vector of values.
-#' This function was taken unchanged from the phylogenize R codebase
-#' (except it is no longer exported).
-#'
+# Calculate logit of a value or vector of values.
+# This function was taken unchanged from the phylogenize R codebase
+# (except it is no longer exported).
+#
 logit <- function(x) (log(x / (1 - x)))
 
-#' Calculate inverse-logit of a value or vector of values.
-#' This function was taken unchanged from the phylogenize R codebase.
-#' (except it is no longer exported).
+# Calculate inverse-logit of a value or vector of values.
+# This function was taken unchanged from the phylogenize R codebase.
+# (except it is no longer exported).
 logistic <- function(x) exp(x) / (1 + exp(x))
 
-#' Apply a function to a vector of names, with the returned list having those
-#' names.
-#' This function was taken unchanged from the phylogenize R codebase.
+# Apply a function to a vector of names, with the returned list having those
+# names.
+# This function was taken unchanged from the phylogenize R codebase.
 # (except the description lines were removed).
 lapply.across.names <- function(X, FUN, ...) {
   r <- lapply(X, FUN, ...)
@@ -100,7 +100,7 @@ sim_presence_absence <- function(effect.size = 2,
   neg.taxa <- taxa - (tp.taxa)
   n.classes <- length(samples)
   pT <- sapply(1:taxa, function(.) {
-    rbeta(1, baseline.distro[1], baseline.distro[2])
+    stats::rbeta(1, baseline.distro[1], baseline.distro[2])
   })
   
   # Added to account for cases where the simulated value is 1, which
@@ -114,7 +114,7 @@ sim_presence_absence <- function(effect.size = 2,
     pT[which(pT == 0)] <- 0.0000001
   }
   
-  fx <- c(((2 * rbinom(n = tp.taxa, size = 1, sign.pos.prob)) - 1),
+  fx <- c(((2 * stats::rbinom(n = tp.taxa, size = 1, sign.pos.prob)) - 1),
           rep(0, neg.taxa))
   pTbs <- sapply(1:taxa, function(i) {
     pTb <- logistic(logit(pT) + (fx * (effect.size)))
@@ -123,7 +123,7 @@ sim_presence_absence <- function(effect.size = 2,
   sim.mtx <- t(sapply(1:taxa, function(i) {
     Reduce(c, lapply.across.names(names(samples), function(smp) {
       if (smp == focal_level) { p <- pTbs[i] } else { p <- pT[i] }
-      rbinom(samples[smp], size = 1, p)
+      stats::rbinom(samples[smp], size = 1, p)
     }))
   }))
   ids <- Reduce(c, lapply(1:length(samples), function(i) rep(i, samples[i])))
@@ -141,8 +141,8 @@ sim_presence_absence <- function(effect.size = 2,
 }
 
 
-#' Score a simulated regularization by how well it recapitulates the ground truth.
-#' This function was taken unchanged from the phylogenize R codebase.
+# Score a simulated regularization by how well it recapitulates the ground truth.
+# This function was taken unchanged from the phylogenize R codebase.
 # (except the description lines were removed).
 score.regularization <- function(mtx,
                                  ids,
@@ -164,7 +164,7 @@ score.regularization <- function(mtx,
   posteriors <- regularized[2, , drop=TRUE]
   signif <- 1 * (abs(posteriors - prior) > tol)
   predicted.signs <- signif * sign(posteriors - prior)
-  fpr <- (signif[real.fx == 0] %>% mean)
+  fpr <- mean(signif[real.fx == 0])
   pwr.hi <- mean(predicted.signs[real.fx == 1] == 1)
   pwr.lo <- mean(predicted.signs[real.fx == -1] == -1)
   return(c(fpr = fpr, pwr.hi = pwr.hi, pwr.lo = pwr.lo))
@@ -194,8 +194,8 @@ fit.beta.list <-  function(mtx, ids, fallback = c(NA, NA)) {
   })
 }
 
-#' Based on a real presence/absence matrix, optimize the value of the
-#' regularization parameter $b$.
+# Based on a real presence/absence matrix, optimize the value of the
+# regularization parameter $b$.
 optimize_b_wrapper <- function(real_abun_table,
                                real_sample_values,
                                focal_var_level,
@@ -257,13 +257,13 @@ optimize_b_wrapper <- function(real_abun_table,
     }
   }
   
-  suppressWarnings(optimize(get.optim, bounds, maximum = TRUE))
+  suppressWarnings(stats::optimize(get.optim, bounds, maximum = TRUE))
 
 }
 
 
-#' Obtain a regularized estimate of specificity.
-#' This function was taken unchanged from the phylogenize R codebase.
+# Obtain a regularized estimate of specificity.
+# This function was taken unchanged from the phylogenize R codebase.
 # (except the description lines were removed).
 regularize.pET <- function(vec,
                            env.ids,
@@ -291,19 +291,19 @@ regularize.pET <- function(vec,
   pT <- pT.E * prior + pT.nE * (1 - prior)
   map <- function(p) {
     x <- (p * pT) / prior # P(T|C)
-    dbinom(k, n, x) * ((1/2*b)) * exp(-(abs(logit(p)-logit(prior))/b))
+    stats::dbinom(k, n, x) * ((1/2*b)) * exp(-(abs(logit(p)-logit(prior))/b))
   }
   map.logit <- function(logit.p) {
     p <- logistic(logit.p)
     x <- (p * pT) / prior # P(T|C)
     # return log probability also, better numerical stability
-    dbinom(k, n, x, log = TRUE) +
+    stats::dbinom(k, n, x, log = TRUE) +
       log(1 / (2*b)) -
       (abs(logit(p)-logit(prior))/b)
   }
   max.p <- prior / pT
   max.p <- min(max.p, logistic(max.limit))
-  results <- optimize(map.logit, c(min.limit, logit(max.p)), maximum = TRUE)
+  results <- stats::optimize(map.logit, c(min.limit, logit(max.p)), maximum = TRUE)
   initial.x <- pT.E
   initial.p <- (pT.E * prior) / pT
   final.x <- logistic(results$maximum) * pT / prior
@@ -316,8 +316,8 @@ regularize.pET <- function(vec,
 }
 
 
-#' Test whether a value is between two other values (non-inclusive).
-#' This function was taken unchanged from the phylogenize R codebase.
+# Test whether a value is between two other values (non-inclusive).
+# This function was taken unchanged from the phylogenize R codebase.
 # (except the description lines were removed).
 `%btwn%` <- function(x, y) { (x > min(y)) & (x < max(y)) }
 
