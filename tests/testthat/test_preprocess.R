@@ -1,6 +1,3 @@
-# Tests for small preprocessing functions.
-
-library(POMS)
 
 test_input <- data.frame(matrix(c(0, 1, 30, 0.1, 10, 0, 0, 0, 0, 1, 0, 10), nrow = 4, ncol = 3))
 rownames(test_input) <- c("row1", "row2", "row3", "row4")

@@ -1,10 +1,4 @@
 
-library(POMS)
-
-ex_taxa_labels <- read.table("../../example_files/ex_taxa_labels.tsv.gz", header = TRUE, sep = "\t", row.names = 1)
-ex_tree <- ape::read.tree("../../example_files/ex_tree.newick")
-
-
 test_that("taxa on each side of the node are correct, with combined labels and threshold of 0.51", {
  
   exp_output <- c("Bacteria; Bacteroidetes; Bacteroidia; Bacteroidales; Porphyromonadaceae (Family)",

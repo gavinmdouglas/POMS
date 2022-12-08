@@ -1,23 +1,11 @@
 
-library(POMS)
-
-
-ex_taxa_abun <- read.table("../../example_files/ex_taxa_abun.tsv.gz", header = TRUE, sep = "\t", row.names = 1)
 ex_taxa_abun <- ex_taxa_abun[, c("ERR321132", "SRR5127690", "SRR2992922", "ERR321066")]
-
-ex_tree <- ape::read.tree("../../example_files/ex_tree.newick")
 
 test_features1 <- c("SRR769509_bin.3", "21673_4_5", "SRR3992981_bin.16")
 test_features2 <- c("ERR1620320_bin.20", "ERR1293861_bin.21", "SRR4408017_bin.22", "SRR2155382_bin.36", "ERR1620320_bin.43")
 
 test_features_w_missing <- c("ERR1620320_bin.20", "ERR1293861_bin.21", "not_present")
 test_features_w_overlapping <- c("ERR1620320_bin.20", "ERR1293861_bin.21", "21673_4_5")
-
-ex_taxa_labels <- read.table("../../example_files/ex_taxa_labels.tsv.gz",
-                             header = TRUE,
-                             sep = "\t",
-                             stringsAsFactors = FALSE,
-                             row.names = 1)
 
 test_that("expected error returned when features not present in table are input.", {
   expect_error(object = abun_isometric_log_ratios(abun_table = ex_taxa_abun,

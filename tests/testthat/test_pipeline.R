@@ -1,13 +1,4 @@
 
-library(POMS)
-
-ex_taxa_abun <- read.table("../../example_files/ex_taxa_abun.tsv.gz", header = TRUE, sep = "\t", row.names = 1)
-ex_func <- read.table("../../example_files/ex_func.tsv.gz", header = TRUE, sep = "\t", row.names = 1)
-
-ex_group1 <- read.table("../../example_files/ex_group1.txt.gz", stringsAsFactors = FALSE)$V1
-ex_group2 <- read.table("../../example_files/ex_group2.txt.gz", stringsAsFactors = FALSE)$V1
-
-ex_tree <- ape::read.tree("../../example_files/ex_tree.newick")
 ex_tree_w_label <- ex_tree
 ex_tree_wo_label <- ex_tree
 ex_tree_wo_label$node.label <- NULL
