@@ -31,6 +31,6 @@ nodes that were tested (i.e., those that were non-negligible).
 }
 \description{
 Parse POMS_pipeline output to look at FSNs for a specific function (e.g., a specific gene family). Will also parse BSN information (which is not dependent on a particular function).
-This is convienient to do before plotting the distribution of FSNs and BSNs across the tree with the ggtree R package for instance.
+This is convenient to do before plotting the distribution of FSNs and BSNs across the tree with the ggtree R package for instance.
 When a taxa label table is specified, labels of tested nodes in the tree (found in the POMS_pipeline output object) will be renamed to be the representative taxa on each side.
 }
