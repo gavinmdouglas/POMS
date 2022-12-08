@@ -1,6 +1,4 @@
 
-cat(getwd(), file = "/home/gavin/tmp/test")
-
 ex_taxa_abun <- read.table("../example_files/ex_taxa_abun.tsv.gz", header = TRUE, sep = "\t", row.names = 1)
 ex_func <- read.table("../example_files/ex_func.tsv.gz", header = TRUE, sep = "\t", row.names = 1)
 
