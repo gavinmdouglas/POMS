@@ -412,7 +412,7 @@ check_POMS_pipeline_args <- function(abun,
         stop("Stopping - group1_samples and group2_samples arguments should not be set when the manual_BSN_dir argument is specified.") 
       }
       
-      if (class(manual_BSN_dir) != "character") {
+      if (! inherits(manual_BSN_dir, "character")) {
         stop("Stopping - input to manual_BSN_dir argument needs to be a character vector.") 
       }
   
@@ -444,13 +444,13 @@ check_POMS_pipeline_args <- function(abun,
     
   }
   
-  if (class(abun) != "data.frame") { stop("Stopping - argument abun needs to be of the class data.frame.") }
-  if (class(func) != "data.frame") { stop("Stopping - argument func needs to be of the class data.frame.") }
-  if (class(tree) != "phylo") { stop("Stopping - argument phylo needs to be of the class phylo.") }
+  if (! inherits(abun, "data.frame")) { stop("Stopping - argument abun needs to be of the class data.frame.") }
+  if (! inherits(func, "data.frame")) { stop("Stopping - argument func needs to be of the class data.frame.") }
+  if (! inherits(tree, "phylo")) { stop("Stopping - argument phylo needs to be of the class phylo.") }
 
   if (is.null(manual_BSN_dir)) {
-    if (class(group1_samples) != "character") { stop("Stopping - argument group1_samples needs to be of the class character.") }
-    if (class(group2_samples) != "character") { stop("Stopping - argument group2_samples needs to be of the class character.") }
+    if (! inherits(group1_samples, "character")) { stop("Stopping - argument group1_samples needs to be of the class character.") }
+    if (! inherits(group2_samples, "character")) { stop("Stopping - argument group2_samples needs to be of the class character.") }
     if (length(group1_samples) == 0) { stop("Stopping - argument group1_samples is of length 0.") }
     if (length(group2_samples) == 0) { stop("Stopping - argument group2_samples is of length 0.") }
     if (length(which(group1_samples %in% colnames(abun))) != length(group1_samples)) { stop("Stopping - not all group1_samples match columns of abun argument.") }
@@ -458,7 +458,7 @@ check_POMS_pipeline_args <- function(abun,
     if (length(which(group1_samples %in% group2_samples)) > 0) { stop("Stopping - at least one sample overlaps between group1_samples and group2_samples, but these should be non-overlapping sets.") }
   }
 
-  if ((class(ncores) != "integer") && (class(ncores) != "numeric")) { stop("Stopping - ncores argument needs to be of class numeric or integer.") }
+  if ((! inherits(ncores, "integer")) & (! inherits(ncores, "numeric"))) { stop("Stopping - ncores argument needs to be of class numeric or integer.") }
   if (length(ncores) != 1) { stop("Stopping - ncores argument must be of length 1.") }
   if (ncores <= 0) { stop("Stopping - ncores argument must be 1 or higher.") }
 
@@ -466,16 +466,16 @@ check_POMS_pipeline_args <- function(abun,
   
   if (length(jaccard_cutoff) != 1) {
     stop("Stopping - jaccard_cutoff argument must be of length one.")
-  } else if (class(jaccard_cutoff) != "integer" & class(jaccard_cutoff) != "numeric") {
+  } else if ((! inherits(jaccard_cutoff, "integer")) & (! inherits(jaccard_cutoff, "numeric"))) {
     stop("Stopping - jaccard_cutoff argument must be a number.")
   } else if (jaccard_cutoff < 0 | jaccard_cutoff > 1) {
     stop("Stopping - jaccard_cutoff must be between 0 and 1 (inclusively).")
   }
   
-  if ((class(pseudocount) != "integer") && (class(pseudocount) != "numeric")) { stop("Stopping - pseudocount argument needs to be of class numeric or integer.") }
+  if ((! inherits(pseudocount, "integer")) & (! inherits(pseudocount, "numeric"))) { stop("Stopping - pseudocount argument needs to be of class numeric or integer.") }
   if (pseudocount < 0) { stop("Stopping - pseudocount argument cannot be lower than 0.") }
 
-  if ((class(multinomial_min_FSNs) != "integer") && (class(multinomial_min_FSNs) != "numeric")) { stop("Stopping - multinomial_min_FSNs argument needs to be of class numeric or integer.") }
+  if ((! inherits(multinomial_min_FSNs, "integer")) & (! inherits(multinomial_min_FSNs, "numeric"))) { stop("Stopping - multinomial_min_FSNs argument needs to be of class numeric or integer.") }
   if (multinomial_min_FSNs < 0) { stop("Stopping - multinomial_min_FSNs argument cannot be lower than 0.") }
   
   if (min_num_tips > length(tree$tip.label) / 2) { stop("Stopping - the min_num_tips argument cannot be higher than half of the total number of tips.") }

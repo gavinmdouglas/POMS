@@ -68,7 +68,7 @@ genome_content_phylo_regress <- function(y, func, in_tree, ncores = 1, model_typ
     stop("Stopping - not all taxa in func and y are present as tips in tree.")
   }
 
-  if ((class(ncores) != "integer") && (class(ncores) != "numeric")) {
+  if ((! inherits(ncores, "integer")) & (! inherits(ncores, "numeric"))) {
     stop("Stopping - ncores argument needs to be of class numeric or integer.")
   } else if (length(ncores) != 1) {
     stop("Stopping - ncores argument must be of length 1.")

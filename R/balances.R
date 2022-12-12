@@ -316,11 +316,11 @@ feature_consensus_taxon <- function(taxa, features, threshold, combine_labels = 
 # Get tips on left-hand and right-hand side of node.
 lhs_rhs_tips <- function(tree, node, get_node_index=FALSE) {
   
-  if(get_node_index) {
+  if (get_node_index) {
     node <- which(tree$node.label == node) + length(tree$tip.label)
   }
   
-  if(class(node) == "character") { stop("Node is a character and not numeric - set get_node_index=TRUE if you want to input node label rather than node number.") }
+  if (inherits(node, "character")) { stop("Node is a character and not numeric - set get_node_index=TRUE if you want to input node label rather than node number.") }
   
   node_children <- phangorn::Children(tree, node)
   
@@ -340,7 +340,7 @@ jaccard_derep_nodes <- function(tree, node_features, cutoff = 0.75, ncores = 1) 
   
   if (length(cutoff) != 1) {
     stop("Jaccard cut-off argument must be of length one.")
-  } else if (class(cutoff) != "integer" & class(cutoff) != "numeric") {
+  } else if ((! inherits(cutoff, "integer")) & (! inherits(cutoff, "numeric"))) {
     stop("Jaccard cut-off argument must be a number.")
   } else if (cutoff < 0 | cutoff > 1) {
     stop("Jaccard cut-off must be between 0 and 1 (inclusively).")
