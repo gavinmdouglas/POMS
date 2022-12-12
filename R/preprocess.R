@@ -19,7 +19,7 @@
 #' @export
 filter_rare_table_cols <- function(in_tab, min_nonzero_count, min_nonzero_prop, drop_missing_rows=TRUE, verbose=TRUE) {
 
-  if (inherits(in_tab, "data.frame")) {
+  if (! inherits(in_tab, "data.frame")) {
     stop("Error - argument \"in_tab\" not class data.frame") 
   }
   
