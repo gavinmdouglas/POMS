@@ -561,10 +561,7 @@ summarize_node_enrichment <- function(enriched_funcs, identified_BSNs, func_p_cu
               func_summaries[[func_id]]$FSNs_group2_enrich <- c(func_summaries[[func_id]]$FSNs_group2_enrich, node)
             
             } else {
-              
-              print(enriched_funcs[[node]][func_id, ])
               stop("Stopping - function was significant, but OR was not different than 1. Red flag!")
-          
             }
           }
     
