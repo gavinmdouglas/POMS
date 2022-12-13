@@ -12,7 +12,7 @@ Description: Code to identify functional enrichments across diverse taxa
     this approach is to identify microbial functions encoded by diverse
     taxa that are at higher abundance in certain samples compared to
     others, which could indicate that such functions are broadly adaptive
-    under certain conditions. See GitHub repository for tutorial and
+    under certain conditions. See 'GitHub' repository for tutorial and
     examples: <https://github.com/gavinmdouglas/POMS/wiki>. Citation: Gavin M. Douglas, Molly G. Hayes, Morgan G. I. Langille, Elhanan Borenstein (2022) <doi:10.1093/bioinformatics/btac655>.
 License: GPL-3
 Imports:
